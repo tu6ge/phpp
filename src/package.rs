@@ -23,6 +23,10 @@ pub struct P2 {
 impl P2 {
     pub fn new(name: String) -> Pin<Box<dyn Future<Output = ()> + Send>> {
         Box::pin(async move {
+            let exists = Self::file_exists(&name);
+            if exists {
+                return;
+            }
             let json = Self::down(&name).await;
             if let Err(_) = json {
                 return;
@@ -67,6 +71,18 @@ impl P2 {
         let json = response.text().await.unwrap();
 
         Ok(json)
+    }
+
+    pub fn file_exists(name: &str) -> bool {
+        use dirs::home_dir;
+        let cache_dir = home_dir().unwrap().join(CACHE_DIR);
+        let repo_dir = cache_dir.join("repo");
+
+        let name_dir = name.replace("/", "-");
+        let filename = format!("provider-{}.json", name_dir);
+        let final_path = repo_dir.join(filename);
+
+        final_path.exists()
     }
 
     pub fn save(name: &str, content: &str) {
