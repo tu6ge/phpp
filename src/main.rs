@@ -3,6 +3,7 @@ use clap::{Parser, Subcommand};
 use package::P2;
 
 mod app;
+mod error;
 mod package;
 
 #[tokio::main]

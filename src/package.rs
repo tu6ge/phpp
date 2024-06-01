@@ -2,13 +2,14 @@ use std::{
     collections::{HashMap, HashSet},
     future::Future,
     io::Write,
-    path::Path,
     pin::Pin,
     time::Duration,
 };
 
 use serde::Deserialize;
 use tokio::time::sleep;
+
+use crate::error::ComposerError;
 
 const PACKAGE_URL: &'static str = "https://repo.packagist.org/p2/";
 const CACHE_DIR: &'static str = ".cache/composer2";
@@ -21,26 +22,25 @@ pub struct P2 {
 }
 
 impl P2 {
-    pub fn new(name: String) -> Pin<Box<dyn Future<Output = ()> + Send>> {
+    pub fn new(name: String) -> Pin<Box<dyn Future<Output = Result<(), ComposerError>> + Send>> {
         Box::pin(async move {
             let exists = Self::file_exists(&name);
             if exists {
-                return;
+                return Ok(());
             }
-            let json = Self::down(&name).await;
-            if let Err(_) = json {
-                return;
-            }
-            let json = json.unwrap();
+            let json = Self::down(&name).await?;
 
-            Self::save(&name, &json);
+            Self::save(&name, &json)?;
             println!("download {} success", name);
 
             sleep(Duration::from_millis(100)).await;
 
-            let tree: P2 = serde_json::from_str(&json).unwrap();
+            let tree: P2 = serde_json::from_str(&json)?;
 
-            let verson_list = tree.packages.get(&name).unwrap();
+            let verson_list = tree
+                .packages
+                .get(&name)
+                .ok_or(ComposerError::NotFoundPackageName(name.to_owned()))?;
             let info = &verson_list[0];
             let deps = &info.require;
             if let Some(Require::Map(deps)) = deps {
@@ -50,25 +50,27 @@ impl P2 {
                     } else if matches!(name.find("ext-"), Some(0)) {
                         continue;
                     } else {
-                        P2::new(name.to_owned()).await;
+                        P2::new(name.to_owned()).await?;
                     }
                 }
             }
+
+            Ok(())
         })
     }
 
-    pub async fn down(name: &str) -> Result<String, ()> {
+    pub async fn down(name: &str) -> Result<String, ComposerError> {
         let mut url = String::from(PACKAGE_URL);
         url.push_str(name);
         url.push_str(".json");
 
-        let response = reqwest::Client::new().get(url).send().await.unwrap();
+        let response = reqwest::Client::new().get(url).send().await?;
 
         if !response.status().is_success() {
-            return Err(());
+            return Err(ComposerError::NotFoundPackage(name.to_owned()));
         }
 
-        let json = response.text().await.unwrap();
+        let json = response.text().await?;
 
         Ok(json)
     }
@@ -85,20 +87,24 @@ impl P2 {
         final_path.exists()
     }
 
-    pub fn save(name: &str, content: &str) {
+    pub fn save(name: &str, content: &str) -> Result<(), ComposerError> {
         use dirs::home_dir;
         use std::fs::{create_dir_all, File};
 
-        let cache_dir = home_dir().unwrap().join(CACHE_DIR);
+        let cache_dir = home_dir()
+            .ok_or(ComposerError::NotFoundHomeDir)?
+            .join(CACHE_DIR);
         let repo_dir = cache_dir.join("repo");
-        create_dir_all(&repo_dir).unwrap();
+        create_dir_all(&repo_dir)?;
 
         let name_dir = name.replace("/", "-");
         let filename = format!("provider-{}.json", name_dir);
         let final_path = repo_dir.join(filename);
 
-        let mut f = File::create(final_path).unwrap();
-        f.write_all(content.as_bytes()).unwrap();
+        let mut f = File::create(final_path)?;
+        f.write_all(content.as_bytes())?;
+
+        Ok(())
     }
 }
 
