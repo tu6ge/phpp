@@ -106,6 +106,20 @@ impl P2 {
 
         Ok(())
     }
+
+    pub fn clear() -> Result<(), ComposerError> {
+        use dirs::home_dir;
+        use std::fs::remove_dir_all;
+        let cache_dir = home_dir()
+            .ok_or(ComposerError::NotFoundHomeDir)?
+            .join(CACHE_DIR);
+        let repo_dir = cache_dir.join("repo");
+        remove_dir_all(repo_dir)?;
+
+        // TODO other dir
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Deserialize)]

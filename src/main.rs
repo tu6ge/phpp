@@ -16,6 +16,9 @@ async fn main() {
         Commands::Required { name } => {
             P2::new(name.to_owned()).await;
         }
+        Commands::Clear => {
+            P2::clear().expect("clear dir failed");
+        }
     }
 }
 
@@ -29,4 +32,5 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Required { name: String },
+    Clear,
 }
