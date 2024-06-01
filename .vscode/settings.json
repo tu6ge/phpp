@@ -1,0 +1,7 @@
+{
+  "rust-analyzer.cargo.features": [
+  ],
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "rust-lang.rust-analyzer",
+  "commentTranslate.hover.enabled": false
+}
