@@ -1,13 +1,16 @@
 use std::{
     collections::{HashMap, HashSet},
+    fs::File,
     future::Future,
     io::Write,
+    path::Path,
     pin::Pin,
+    sync::{Arc, Mutex},
     time::Duration,
 };
 
 use semver::VersionReq;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 
 use crate::error::ComposerError;
@@ -15,7 +18,7 @@ use crate::error::ComposerError;
 const PACKAGE_URL: &'static str = "https://repo.packagist.org/p2/";
 const CACHE_DIR: &'static str = ".cache/composer2";
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct P2 {
     pub(crate) packages: HashMap<String, Vec<Version>>,
     #[serde(skip)]
@@ -26,6 +29,7 @@ impl P2 {
     pub fn new(
         name: String,
         version: Option<String>,
+        list: Arc<Mutex<Vec<Version>>>,
     ) -> Pin<Box<dyn Future<Output = Result<(), ComposerError>> + Send>> {
         Box::pin(async move {
             let exists = Self::file_exists(&name);
@@ -55,6 +59,9 @@ impl P2 {
                     }
                 }
             }
+
+            list.lock().unwrap().push(info.clone());
+
             println!("download {}({})", name, info.version);
             let deps = &info.require;
             if let Some(Require::Map(deps)) = deps {
@@ -65,7 +72,8 @@ impl P2 {
                     } else if matches!(dep_name.find("ext-"), Some(0)) {
                         continue;
                     } else {
-                        P2::new(dep_name.to_owned(), Some(version.to_owned())).await?;
+                        P2::new(dep_name.to_owned(), Some(version.to_owned()), list.clone())
+                            .await?;
                     }
                 }
             }
@@ -194,9 +202,41 @@ impl P2 {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Clone)]
+pub struct ComposerLock {
+    packages: Vec<Version>,
+}
+
+impl ComposerLock {
+    pub fn new(versions: Arc<Mutex<Vec<Version>>>) -> Self {
+        let ls = versions.lock().unwrap();
+
+        let mut packages = Vec::new();
+        for item in ls.iter() {
+            if let Some(_) = item.name {
+                packages.push(item.clone());
+            }
+        }
+
+        packages.sort_by(|a, b| a.name.cmp(&b.name));
+
+        Self { packages }
+    }
+
+    pub fn json(&self) -> String {
+        serde_json::to_string_pretty(&self).unwrap()
+    }
+
+    pub fn save_file(&self) {
+        let path = Path::new("./composer.lock");
+        let mut f = File::create(path).unwrap();
+        f.write(self.json().as_bytes()).unwrap();
+    }
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct Version {
-    name: Option<String>,
+    pub name: Option<String>,
     pub(crate) version: String,
     pub(crate) version_normalized: String,
     source: Option<Source>,
@@ -210,7 +250,7 @@ pub struct Version {
     autoload: Option<AutoloadEnum>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 struct Source {
     #[serde(rename = "type")]
     _type: String,
@@ -219,7 +259,7 @@ struct Source {
     reference: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct Dist {
     pub(crate) url: String,
     #[serde(rename = "type")]
@@ -227,14 +267,14 @@ pub struct Dist {
     pub(crate) reference: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 #[serde(untagged)]
 enum Require {
     Map(HashMap<String, String>),
     String(String),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 #[serde(untagged)]
 enum AutoloadEnum {
     Psr(Autoload),
@@ -242,7 +282,7 @@ enum AutoloadEnum {
     Null(),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 struct Autoload {
     #[serde(rename = "psr-4")]
     psr4: Option<HashMap<String, PsrValue>>,
@@ -256,14 +296,14 @@ struct Autoload {
     files: Option<Vec<String>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 #[serde(untagged)]
 enum PsrValue {
     String(String),
     Array(Vec<String>),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 #[serde(untagged)]
 enum AutoLoadClassmap {
     Array(Vec<String>),
@@ -272,8 +312,6 @@ enum AutoLoadClassmap {
 
 #[cfg(test)]
 mod tests {
-    use semver::{BuildMetadata, Prerelease, VersionReq};
-
     use super::*;
 
     #[tokio::test]

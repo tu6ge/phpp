@@ -1,9 +1,15 @@
 use core::panic;
+use std::{
+    fs::File,
+    io::Write,
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 use app::App;
 use clap::{Parser, Subcommand};
 use error::ComposerError;
-use package::P2;
+use package::{ComposerLock, Version, P2};
 
 mod app;
 mod error;
@@ -15,9 +21,12 @@ async fn main() {
 
     let app = App {};
 
+    let mut list = Vec::new();
+    let versions = Arc::new(Mutex::new(list));
+
     match &cli.command {
         Commands::Required { name } => {
-            let res = P2::new(name.to_owned(), None).await;
+            let res = P2::new(name.to_owned(), None, versions.clone()).await;
 
             match res {
                 Ok(()) => {}
@@ -25,6 +34,9 @@ async fn main() {
                 Err(ComposerError::NotFoundPackage(_)) => {}
                 Err(e) => panic!("{:?}", e),
             }
+
+            let packages = ComposerLock::new(versions);
+            packages.save_file();
         }
         Commands::Clear => {
             P2::clear().expect("clear dir failed");
