@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    fs::File,
+    fs::{read_to_string, File},
     future::Future,
     io::Write,
     path::Path,
@@ -30,17 +30,24 @@ impl P2 {
         name: String,
         version: Option<String>,
         list: Arc<Mutex<Vec<Version>>>,
+        hash_set: Arc<Mutex<HashSet<String>>>,
     ) -> Pin<Box<dyn Future<Output = Result<(), ComposerError>> + Send>> {
         Box::pin(async move {
-            let exists = Self::file_exists(&name);
-            if exists {
+            if let Some(_) = hash_set.lock().unwrap().get(&name) {
                 return Ok(());
             }
-            let _ = sleep(Duration::from_millis(200));
 
-            let json = Self::down(&name).await?;
+            let exists = Self::file_exists(&name);
+            let json = if exists {
+                Self::read_file(&name)?
+            } else {
+                let _ = sleep(Duration::from_millis(200));
 
-            Self::save(&name, &json).unwrap();
+                let json = Self::down(&name).await?;
+
+                Self::save(&name, &json).unwrap();
+                json
+            };
 
             let tree: P2 = serde_json::from_str(&json)
                 .expect(&format!("parse json failed, package: {}", name));
@@ -61,6 +68,7 @@ impl P2 {
             }
 
             list.lock().unwrap().push(info.clone());
+            hash_set.lock().unwrap().insert(name.to_owned());
 
             println!("download {}({})", name, info.version);
             let deps = &info.require;
@@ -68,12 +76,19 @@ impl P2 {
                 for (dep_name, version) in deps.iter() {
                     //println!("source: {}, deps: {}, version:{}", name, dep_name, version);
                     if dep_name == "php" {
+                        // TODO
                         continue;
                     } else if matches!(dep_name.find("ext-"), Some(0)) {
+                        // TODO
                         continue;
                     } else {
-                        P2::new(dep_name.to_owned(), Some(version.to_owned()), list.clone())
-                            .await?;
+                        P2::new(
+                            dep_name.to_owned(),
+                            Some(version.to_owned()),
+                            list.clone(),
+                            hash_set.clone(),
+                        )
+                        .await?;
                     }
                 }
             }
@@ -128,6 +143,22 @@ impl P2 {
         f.write_all(content.as_bytes())?;
 
         Ok(())
+    }
+    pub fn read_file(name: &str) -> Result<String, ComposerError> {
+        use dirs::home_dir;
+
+        let cache_dir = home_dir()
+            .ok_or(ComposerError::NotFoundHomeDir)?
+            .join(CACHE_DIR);
+        let repo_dir = cache_dir.join("repo");
+
+        let name_dir = name.replace("/", "-");
+        let filename = format!("provider-{}.json", name_dir);
+        let final_path = repo_dir.join(filename);
+
+        let content = read_to_string(final_path)?;
+
+        Ok(content)
     }
 
     pub fn clear() -> Result<(), ComposerError> {

@@ -1,5 +1,6 @@
 use core::panic;
 use std::{
+    collections::HashSet,
     fs::File,
     io::Write,
     path::Path,
@@ -21,12 +22,20 @@ async fn main() {
 
     let app = App {};
 
-    let mut list = Vec::new();
+    let list = Vec::new();
     let versions = Arc::new(Mutex::new(list));
+    let version_hash_set = HashSet::new();
+    let version_hash = Arc::new(Mutex::new(version_hash_set));
 
     match &cli.command {
         Commands::Required { name } => {
-            let res = P2::new(name.to_owned(), None, versions.clone()).await;
+            let res = P2::new(
+                name.to_owned(),
+                None,
+                versions.clone(),
+                version_hash.clone(),
+            )
+            .await;
 
             match res {
                 Ok(()) => {}
