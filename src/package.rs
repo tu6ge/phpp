@@ -6,6 +6,7 @@ use std::{
     time::Duration,
 };
 
+use semver::VersionReq;
 use serde::Deserialize;
 use tokio::time::sleep;
 
@@ -22,7 +23,10 @@ pub struct P2 {
 }
 
 impl P2 {
-    pub fn new(name: String) -> Pin<Box<dyn Future<Output = Result<(), ComposerError>> + Send>> {
+    pub fn new(
+        name: String,
+        version: Option<String>,
+    ) -> Pin<Box<dyn Future<Output = Result<(), ComposerError>> + Send>> {
         Box::pin(async move {
             let exists = Self::file_exists(&name);
             if exists {
@@ -31,26 +35,36 @@ impl P2 {
             let json = Self::down(&name).await?;
 
             Self::save(&name, &json)?;
-            println!("download {} success", name);
 
             sleep(Duration::from_millis(100)).await;
 
             let tree: P2 = serde_json::from_str(&json)?;
 
-            let verson_list = tree
+            let version_list = tree
                 .packages
                 .get(&name)
                 .ok_or(ComposerError::NotFoundPackageName(name.to_owned()))?;
-            let info = &verson_list[0];
+
+            let mut info = &version_list[0];
+            if let Some(req) = version {
+                for item in version_list.iter() {
+                    if Self::semver_check(&name, &req, &item.version) {
+                        info = item;
+                        break;
+                    }
+                }
+            }
+            println!("download {}({})", name, info.version);
             let deps = &info.require;
             if let Some(Require::Map(deps)) = deps {
-                for (name, version) in deps.iter() {
-                    if name == "php" {
+                for (dep_name, version) in deps.iter() {
+                    //println!("source: {}, deps: {}, version:{}", name, dep_name, version);
+                    if dep_name == "php" {
                         continue;
-                    } else if matches!(name.find("ext-"), Some(0)) {
+                    } else if matches!(dep_name.find("ext-"), Some(0)) {
                         continue;
                     } else {
-                        P2::new(name.to_owned()).await?;
+                        P2::new(dep_name.to_owned(), Some(version.to_owned())).await?;
                     }
                 }
             }
@@ -120,6 +134,63 @@ impl P2 {
 
         Ok(())
     }
+
+    pub fn semver_check(name: &str, req: &str, version: &str) -> bool {
+        let mut chars = version.chars();
+        let first_char = chars.next();
+        let version = if let Some('v') = first_char {
+            &version[1..]
+        } else if let Some('V') = first_char {
+            &version[1..]
+        } else {
+            &version[..]
+        };
+        let chars = version.chars();
+        let dot_count = chars.filter(|&c| c == '.').count();
+        let version = if dot_count == 1 {
+            format!("{}.0", version)
+        } else {
+            format!("{}", version)
+        };
+
+        let version = semver::Version::parse(&version)
+            .expect(&format!("{}[{}] is not a valid version", name, version));
+        if let Some(_) = req.find("||") {
+            let mut parts = Vec::new();
+            for item in req.split("||") {
+                parts.push(item);
+            }
+            for item in parts.into_iter().rev() {
+                let req = item.trim();
+                let req = VersionReq::parse(req).unwrap();
+
+                if req.matches(&version) {
+                    return true;
+                }
+            }
+
+            false
+        } else if let Some(_) = req.find("|") {
+            let mut parts = Vec::new();
+            for item in req.split("|") {
+                parts.push(item);
+            }
+            for item in parts.into_iter().rev() {
+                let req = item.trim();
+                let req = VersionReq::parse(req).unwrap();
+
+                if req.matches(&version) {
+                    return true;
+                }
+            }
+
+            false
+        } else {
+            let version_req = VersionReq::parse(req).unwrap();
+
+            version_req.matches(&version)
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -150,6 +221,8 @@ enum Require {
 
 #[cfg(test)]
 mod tests {
+    use semver::{BuildMetadata, Prerelease, VersionReq};
+
     use super::*;
 
     #[tokio::test]
@@ -171,5 +244,19 @@ mod tests {
         let res: P2 = serde_json::from_str(&json).unwrap();
 
         println!("{res:?}");
+    }
+
+    #[test]
+    fn test_semver() {
+        assert!(P2::semver_check("name", "^7.0| ^8.0", "7.2.3"));
+        assert!(P2::semver_check("name", "^7.0| ^8.0", "8.2.3"));
+        assert!(!P2::semver_check("name", "^7.0| ^8.0", "9.2.3"));
+        assert!(!P2::semver_check("name", "^7.0|| ^8.0", "9.2.3"));
+        assert!(P2::semver_check("name", "^7.0| ^8.0", "8.0"));
+        //assert!(P2::semver_check("5.1.0-RC1", "5.1.0-RC1"));
+
+        let chars = "1.2.4".chars();
+        let dot_count = chars.filter(|&c| c == '.').count();
+        assert_eq!(dot_count, 2);
     }
 }

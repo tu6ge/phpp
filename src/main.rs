@@ -14,7 +14,7 @@ async fn main() {
 
     match &cli.command {
         Commands::Required { name } => {
-            P2::new(name.to_owned()).await;
+            let _ = P2::new(name.to_owned(), None).await;
         }
         Commands::Clear => {
             P2::clear().expect("clear dir failed");
