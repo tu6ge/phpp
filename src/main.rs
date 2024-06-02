@@ -40,7 +40,6 @@ async fn main() {
             match res {
                 Ok(()) => {}
                 Err(ComposerError::NotFoundPackageName(_)) => {}
-                Err(ComposerError::NotFoundPackage(_)) => {}
                 Err(e) => panic!("{:?}", e),
             }
 

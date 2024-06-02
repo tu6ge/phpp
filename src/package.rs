@@ -43,7 +43,11 @@ impl P2 {
             } else {
                 let _ = sleep(Duration::from_millis(200));
 
-                let json = Self::down(&name).await?;
+                let json = match Self::down(&name).await {
+                    Ok(json) => json,
+                    Err(ComposerError::NotFoundPackage(_)) => return Ok(()),
+                    Err(e) => return Err(e),
+                };
 
                 Self::save(&name, &json).unwrap();
                 json
@@ -52,10 +56,8 @@ impl P2 {
             let tree: P2 = serde_json::from_str(&json)
                 .expect(&format!("parse json failed, package: {}", name));
 
-            let version_list = tree
-                .packages
-                .get(&name)
-                .ok_or(ComposerError::NotFoundPackageName(name.to_owned()))?;
+            let version_list = tree.packages.get(&name).expect("abc");
+            //.ok_or(ComposerError::NotFoundPackageName(name.to_owned()))?;
 
             let mut info = &version_list[0];
             if let Some(req) = version {
