@@ -36,8 +36,6 @@ impl P2 {
 
             Self::save(&name, &json)?;
 
-            sleep(Duration::from_millis(100)).await;
-
             let tree: P2 = serde_json::from_str(&json)?;
 
             let version_list = tree
