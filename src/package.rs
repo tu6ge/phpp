@@ -32,11 +32,14 @@ impl P2 {
             if exists {
                 return Ok(());
             }
+            let _ = sleep(Duration::from_millis(200));
+
             let json = Self::down(&name).await?;
 
-            Self::save(&name, &json)?;
+            Self::save(&name, &json).unwrap();
 
-            let tree: P2 = serde_json::from_str(&json)?;
+            let tree: P2 = serde_json::from_str(&json)
+                .expect(&format!("parse json failed, package: {}", name));
 
             let version_list = tree
                 .packages
@@ -193,13 +196,27 @@ impl P2 {
 
 #[derive(Debug, Deserialize)]
 pub struct Version {
-    //name: String,
+    name: Option<String>,
     pub(crate) version: String,
     pub(crate) version_normalized: String,
+    source: Option<Source>,
     pub(crate) dist: Option<Dist>,
     // autoload
     pub(crate) require: Option<Require>,
-    // require-dev
+
+    #[serde(rename = "require-dev")]
+    pub(crate) requireDev: Option<Require>,
+
+    autoload: Option<AutoloadEnum>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Source {
+    #[serde(rename = "type")]
+    _type: String,
+
+    url: String,
+    reference: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -215,6 +232,42 @@ pub struct Dist {
 enum Require {
     Map(HashMap<String, String>),
     String(String),
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum AutoloadEnum {
+    Psr(Autoload),
+    String(String),
+    Null(),
+}
+
+#[derive(Debug, Deserialize)]
+struct Autoload {
+    #[serde(rename = "psr-4")]
+    psr4: Option<HashMap<String, PsrValue>>,
+
+    #[serde(rename = "psr-0")]
+    psr0: Option<HashMap<String, PsrValue>>,
+
+    #[serde(rename = "classmap")]
+    classMap: Option<AutoLoadClassmap>,
+
+    files: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum PsrValue {
+    String(String),
+    Array(Vec<String>),
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum AutoLoadClassmap {
+    Array(Vec<String>),
+    Array2(Vec<Vec<String>>),
 }
 
 #[cfg(test)]

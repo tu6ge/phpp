@@ -1,5 +1,8 @@
+use core::panic;
+
 use app::App;
 use clap::{Parser, Subcommand};
+use error::ComposerError;
 use package::P2;
 
 mod app;
@@ -14,7 +17,14 @@ async fn main() {
 
     match &cli.command {
         Commands::Required { name } => {
-            let _ = P2::new(name.to_owned(), None).await;
+            let res = P2::new(name.to_owned(), None).await;
+
+            match res {
+                Ok(()) => {}
+                Err(ComposerError::NotFoundPackageName(_)) => {}
+                Err(ComposerError::NotFoundPackage(_)) => {}
+                Err(e) => panic!("{:?}", e),
+            }
         }
         Commands::Clear => {
             P2::clear().expect("clear dir failed");
