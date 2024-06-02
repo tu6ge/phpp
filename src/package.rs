@@ -9,6 +9,7 @@ use std::{
     time::Duration,
 };
 
+use reqwest::header::USER_AGENT;
 use semver::VersionReq;
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
@@ -72,7 +73,7 @@ impl P2 {
             list.lock().unwrap().push(info.clone());
             hash_set.lock().unwrap().insert(name.to_owned());
 
-            println!("download {}({})", name, info.version);
+            println!("locked {}({})", name, info.version);
             let deps = &info.require;
             if let Some(Require::Map(deps)) = deps {
                 for (dep_name, version) in deps.iter() {
@@ -129,7 +130,7 @@ impl P2 {
 
     pub fn save(name: &str, content: &str) -> Result<(), ComposerError> {
         use dirs::home_dir;
-        use std::fs::{create_dir_all, File};
+        use std::fs::create_dir_all;
 
         let cache_dir = home_dir()
             .ok_or(ComposerError::NotFoundHomeDir)?
@@ -264,6 +265,46 @@ impl ComposerLock {
         let path = Path::new("./composer.lock");
         let mut f = File::create(path).unwrap();
         f.write(self.json().as_bytes()).unwrap();
+    }
+
+    pub async fn down_package(&self) -> Result<(), ComposerError> {
+        use dirs::home_dir;
+        use std::fs::create_dir_all;
+
+        let cache_dir = home_dir()
+            .ok_or(ComposerError::NotFoundHomeDir)?
+            .join(CACHE_DIR);
+        let repo_dir = cache_dir.join("files");
+        create_dir_all(&repo_dir)?;
+
+        for item in self.packages.iter() {
+            let dist = &item.dist.as_ref().unwrap();
+            let content = reqwest::Client::new()
+                .get(dist.url.clone())
+                .header(USER_AGENT, "tu6ge/composer2")
+                .send()
+                .await
+                .unwrap()
+                .bytes()
+                .await
+                .unwrap();
+
+            let name = item.name.as_ref().unwrap();
+
+            let package_dir = repo_dir.join(name.clone());
+            create_dir_all(&package_dir)?;
+
+            let mut file_name = String::from(dist.reference.clone());
+            file_name.push_str(".zip");
+
+            let mut f = File::create(package_dir.join(file_name))?;
+            f.write_all(&content)?;
+
+            //break;
+            println!("download {}({})", name, item.version);
+        }
+
+        Ok(())
     }
 }
 

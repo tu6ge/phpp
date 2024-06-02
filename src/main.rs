@@ -35,16 +35,13 @@ async fn main() {
                 versions.clone(),
                 version_hash.clone(),
             )
-            .await;
-
-            match res {
-                Ok(()) => {}
-                Err(ComposerError::NotFoundPackageName(_)) => {}
-                Err(e) => panic!("{:?}", e),
-            }
+            .await
+            .expect("download error");
 
             let packages = ComposerLock::new(versions);
             packages.save_file();
+
+            packages.down_package().await.expect("download dist failed");
         }
         Commands::Clear => {
             P2::clear().expect("clear dir failed");
