@@ -40,13 +40,8 @@ impl Composer {
             }
 
             let packages = ComposerLock::new(ctx);
-            packages.save_file();
 
-            packages.down_package().await.expect("download dist failed");
-
-            packages.install_package().expect("install package failed");
-
-            packages.write_psr4()?;
+            packages.installing().await?;
         }
 
         Ok(())
