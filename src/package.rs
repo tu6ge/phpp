@@ -30,11 +30,10 @@ impl P2 {
     pub fn new(
         name: String,
         version: Option<String>,
-        list: Arc<Mutex<Vec<Version>>>,
-        hash_set: Arc<Mutex<HashSet<String>>>,
+        ctx: Arc<Mutex<Context>>,
     ) -> Pin<Box<dyn Future<Output = Result<(), ComposerError>> + Send>> {
         Box::pin(async move {
-            if let Some(_) = hash_set.lock().unwrap().get(&name) {
+            if let Some(_) = ctx.lock().unwrap().hash_set.get(&name) {
                 return Ok(());
             }
 
@@ -70,8 +69,8 @@ impl P2 {
                 }
             }
 
-            list.lock().unwrap().push(info.clone());
-            hash_set.lock().unwrap().insert(name.to_owned());
+            ctx.lock().unwrap().versions.push(info.clone());
+            ctx.lock().unwrap().hash_set.insert(name.to_owned());
 
             println!("  - Locking {}({})", name, info.version);
             let deps = &info.require;
@@ -85,13 +84,7 @@ impl P2 {
                         // TODO
                         continue;
                     } else {
-                        P2::new(
-                            dep_name.to_owned(),
-                            Some(version.to_owned()),
-                            list.clone(),
-                            hash_set.clone(),
-                        )
-                        .await?;
+                        P2::new(dep_name.to_owned(), Some(version.to_owned()), ctx.clone()).await?;
                     }
                 }
             }
@@ -234,8 +227,8 @@ pub struct ComposerLock {
 }
 
 impl ComposerLock {
-    pub fn new(versions: Arc<Mutex<Vec<Version>>>) -> Self {
-        let ls = versions.lock().unwrap();
+    pub fn new(versions: Arc<Mutex<Context>>) -> Self {
+        let ls = &versions.lock().unwrap().versions;
 
         let mut packages = Vec::new();
         for item in ls.iter() {
@@ -454,6 +447,12 @@ enum PsrValue {
 enum AutoLoadClassmap {
     Array(Vec<String>),
     Array2(Vec<Vec<String>>),
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct Context {
+    versions: Vec<Version>,
+    hash_set: HashSet<String>,
 }
 
 #[cfg(test)]

@@ -1,11 +1,8 @@
-use std::{
-    collections::HashSet,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 use app::App;
 use clap::{Parser, Subcommand};
-use package::{ComposerLock, P2};
+use package::{ComposerLock, Context, P2};
 
 mod app;
 mod error;
@@ -17,23 +14,15 @@ async fn main() {
 
     let _app = App {};
 
-    let list = Vec::new();
-    let versions = Arc::new(Mutex::new(list));
-    let version_hash_set = HashSet::new();
-    let version_hash = Arc::new(Mutex::new(version_hash_set));
+    let ctx = Arc::new(Mutex::new(Context::default()));
 
     match &cli.command {
         Commands::Require { name } => {
-            let _ = P2::new(
-                name.to_owned(),
-                None,
-                versions.clone(),
-                version_hash.clone(),
-            )
-            .await
-            .expect("download error");
+            let _ = P2::new(name.to_owned(), None, ctx.clone())
+                .await
+                .expect("download error");
 
-            let packages = ComposerLock::new(versions);
+            let packages = ComposerLock::new(ctx);
             packages.save_file();
 
             packages.down_package().await.expect("download dist failed");
