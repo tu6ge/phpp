@@ -22,8 +22,6 @@ const CACHE_DIR: &'static str = ".cache/composer2";
 #[derive(Debug, Deserialize, Clone)]
 pub struct P2 {
     pub(crate) packages: HashMap<String, Vec<Version>>,
-    #[serde(skip)]
-    names: HashSet<String>,
 }
 
 impl P2 {
@@ -310,17 +308,26 @@ impl ComposerLock {
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct Version {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     pub(crate) version: String,
     pub(crate) version_normalized: String,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     source: Option<Source>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) dist: Option<Dist>,
+
     // autoload
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) require: Option<Require>,
 
     #[serde(rename = "require-dev")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) requireDev: Option<Require>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     autoload: Option<AutoloadEnum>,
 }
 
@@ -359,14 +366,18 @@ enum AutoloadEnum {
 #[derive(Debug, Deserialize, Clone, Serialize)]
 struct Autoload {
     #[serde(rename = "psr-4")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     psr4: Option<HashMap<String, PsrValue>>,
 
     #[serde(rename = "psr-0")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     psr0: Option<HashMap<String, PsrValue>>,
 
     #[serde(rename = "classmap")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     classMap: Option<AutoLoadClassmap>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     files: Option<Vec<String>>,
 }
 
