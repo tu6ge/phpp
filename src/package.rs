@@ -82,6 +82,7 @@ impl P2 {
                         continue;
                     } else if matches!(dep_name.find("ext-"), Some(0)) {
                         // TODO
+                        // require ext-dom * -> it is missing from your system. Install or enable PHP's dom extension.
                         continue;
                     } else {
                         P2::new(dep_name.to_owned(), Some(version.to_owned()), ctx.clone()).await?;
