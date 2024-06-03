@@ -281,13 +281,11 @@ impl ComposerLock {
                 .get(dist.url.clone())
                 .header(USER_AGENT, "tu6ge/composer2")
                 .send()
-                .await
-                .unwrap()
+                .await?
                 .bytes()
-                .await
-                .unwrap();
+                .await?;
 
-            let name = item.name.as_ref().unwrap();
+            let name = item.name.as_ref().expect(&format!("not found name"));
 
             let package_dir = repo_dir.join(name.clone());
             create_dir_all(&package_dir)?;
