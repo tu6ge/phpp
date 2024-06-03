@@ -29,9 +29,10 @@ impl Composer {
         Ok(cp)
     }
 
-    pub async fn install(&self) -> Result<(), ComposerError> {
+    pub async fn install(mut self) -> Result<(), ComposerError> {
         let ctx = Arc::new(Mutex::new(Context::default()));
-        if let Some(list) = &self.require {
+        let list = self.require.take();
+        if let Some(list) = list {
             for (name, _) in list.iter() {
                 let _ = P2::new(name.to_owned(), None, ctx.clone())
                     .await
@@ -50,9 +51,9 @@ impl Composer {
     }
 
     pub fn insert(&mut self, name: &str) -> Result<(), ComposerError> {
-        self.require = match &self.require {
-            Some(list) => {
-                let mut list = list.clone();
+        let require = self.require.take();
+        self.require = match require {
+            Some(mut list) => {
                 list.insert(name.to_owned(), "*".to_owned());
 
                 Some(list)
@@ -67,8 +68,8 @@ impl Composer {
         Ok(())
     }
     pub fn remove(&mut self, name: &str) -> Result<(), ComposerError> {
-        if let Some(ref list) = &self.require {
-            let mut list = list.clone();
+        let require = self.require.take();
+        if let Some(mut list) = require {
             list.remove(name);
             self.require = Some(list);
 
