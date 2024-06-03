@@ -325,7 +325,7 @@ pub struct Version {
 
     #[serde(rename = "require-dev")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) requireDev: Option<Require>,
+    pub(crate) require_dev: Option<Require>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     autoload: Option<AutoloadEnum>,
@@ -350,7 +350,7 @@ pub struct Dist {
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
 #[serde(untagged)]
-enum Require {
+pub(crate) enum Require {
     Map(HashMap<String, String>),
     String(String),
 }
@@ -373,9 +373,8 @@ struct Autoload {
     #[serde(skip_serializing_if = "Option::is_none")]
     psr0: Option<HashMap<String, PsrValue>>,
 
-    #[serde(rename = "classmap")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    classMap: Option<AutoLoadClassmap>,
+    classmap: Option<AutoLoadClassmap>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     files: Option<Vec<String>>,
