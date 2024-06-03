@@ -19,6 +19,7 @@ use crate::error::ComposerError;
 
 const PACKAGE_URL: &'static str = "https://repo.packagist.org/p2/";
 const CACHE_DIR: &'static str = ".cache/composer2";
+const MY_USER_AGENT: &'static str = "tu6ge/phpp";
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct P2 {
@@ -296,7 +297,7 @@ impl ComposerLock {
             }
             let content = reqwest::Client::new()
                 .get(dist.url.clone())
-                .header(USER_AGENT, "tu6ge/composer2")
+                .header(USER_AGENT, MY_USER_AGENT)
                 .send()
                 .await?
                 .bytes()
@@ -368,10 +369,7 @@ impl ComposerLock {
                     let mut outfile = File::create(&final_path).unwrap();
                     std::io::copy(&mut file, &mut outfile).unwrap();
                 }
-
-                //break;
             }
-            //break;
         }
         Ok(())
     }
