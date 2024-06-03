@@ -13,25 +13,22 @@ async fn main() {
     let cli = Cli::parse();
 
     let _app = App {};
+    let mut composer = Composer::new().unwrap();
 
     match &cli.command {
         Commands::Require { name } => {
-            let mut composer = Composer::new().unwrap();
             composer.insert(name).unwrap();
             composer.save();
 
             composer.install().await.unwrap();
         }
         Commands::Install => {
-            let composer = Composer::new().unwrap();
-
             composer.install().await.unwrap();
         }
         Commands::Clear => {
             P2::clear().expect("clear dir failed");
         }
         Commands::Remove { name } => {
-            let mut composer = Composer::new().unwrap();
             composer.remove(name).unwrap();
             composer.save();
         }
