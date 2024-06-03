@@ -5,6 +5,7 @@ use std::{
 
 use reqwest::header::{InvalidHeaderValue, ToStrError};
 use thiserror::Error;
+use zip::result::ZipError;
 
 #[derive(Debug, Error)]
 pub enum ComposerError {
@@ -19,6 +20,8 @@ pub enum ComposerError {
     NotFoundHomeDir,
 
     NotFoundPackageName(String),
+
+    Zip(#[from] ZipError),
 }
 
 impl Display for ComposerError {

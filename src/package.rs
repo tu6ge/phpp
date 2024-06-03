@@ -1,14 +1,15 @@
 use std::{
     collections::{HashMap, HashSet},
-    fs::{read_to_string, File},
+    fs::{create_dir_all, read_to_string, File},
     future::Future,
     io::Write,
-    path::Path,
+    path::{Path, PathBuf},
     pin::Pin,
     sync::{Arc, Mutex},
     time::Duration,
 };
 
+use dirs::home_dir;
 use reqwest::header::USER_AGENT;
 use semver::VersionReq;
 use serde::{Deserialize, Serialize};
@@ -71,7 +72,7 @@ impl P2 {
             list.lock().unwrap().push(info.clone());
             hash_set.lock().unwrap().insert(name.to_owned());
 
-            println!("locked {}({})", name, info.version);
+            println!("  - Locking {}({})", name, info.version);
             let deps = &info.require;
             if let Some(Require::Map(deps)) = deps {
                 for (dep_name, version) in deps.iter() {
@@ -265,9 +266,7 @@ impl ComposerLock {
     }
 
     pub async fn down_package(&self) -> Result<(), ComposerError> {
-        use dirs::home_dir;
         use sha1::{Digest, Sha1};
-        use std::fs::create_dir_all;
 
         let cache_dir = home_dir()
             .ok_or(ComposerError::NotFoundHomeDir)?
@@ -307,9 +306,73 @@ impl ComposerLock {
             f.write_all(&content)?;
 
             //break;
-            println!("download {}({})", name, item.version);
+            println!("  - Downloading {}({})", name, item.version);
         }
 
+        Ok(())
+    }
+
+    pub fn install_package(&self) -> Result<(), ComposerError> {
+        use sha1::{Digest, Sha1};
+
+        let cache_dir = home_dir()
+            .ok_or(ComposerError::NotFoundHomeDir)?
+            .join(CACHE_DIR);
+        let repo_dir = cache_dir.join("files");
+
+        let vendor_dir = Path::new("./vendor");
+        create_dir_all(&vendor_dir)?;
+
+        for item in self.packages.iter() {
+            let name = item.name.as_ref().expect(&format!("not found name"));
+
+            println!("  - Installing {}({})", name, item.version);
+
+            let vendor_item = vendor_dir.join(name.clone());
+            create_dir_all(&vendor_item)?;
+
+            let package_dir = repo_dir.join(name.clone());
+
+            let mut hasher = Sha1::new();
+            hasher.update(item.version.as_bytes());
+            let sha1 = hasher.finalize();
+
+            let mut file_name = hex::encode(&sha1);
+            file_name.push_str(".zip");
+
+            let file_path = package_dir.join(file_name);
+
+            let f = File::open(&file_path)?;
+
+            let mut archive = zip::ZipArchive::new(f)?;
+
+            for i in 1..archive.len() {
+                let mut file = archive.by_index(i).unwrap();
+                let outpath = match file.enclosed_name() {
+                    Some(path) => path.to_owned(),
+                    None => continue,
+                };
+
+                let outpath: PathBuf = outpath.iter().skip(1).collect();
+                let final_path = vendor_item.join(outpath);
+
+                if file.is_dir() {
+                    create_dir_all(&final_path)?;
+                } else {
+                    if let Some(p) = final_path.parent() {
+                        if !p.exists() {
+                            create_dir_all(p).unwrap();
+                        }
+                    }
+
+                    let mut outfile = File::create(&final_path).unwrap();
+                    std::io::copy(&mut file, &mut outfile).unwrap();
+                }
+
+                //break;
+            }
+            //break;
+        }
         Ok(())
     }
 }

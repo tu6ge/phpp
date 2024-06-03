@@ -42,6 +42,8 @@ async fn main() {
             packages.save_file();
 
             packages.down_package().await.expect("download dist failed");
+
+            packages.install_package().expect("install package failed");
         }
         Commands::Clear => {
             P2::clear().expect("clear dir failed");
