@@ -277,13 +277,6 @@ impl ComposerLock {
 
         for item in self.packages.iter() {
             let dist = &item.dist.as_ref().unwrap();
-            let content = reqwest::Client::new()
-                .get(dist.url.clone())
-                .header(USER_AGENT, "tu6ge/composer2")
-                .send()
-                .await?
-                .bytes()
-                .await?;
 
             let name = item.name.as_ref().expect(&format!("not found name"));
 
@@ -297,7 +290,20 @@ impl ComposerLock {
             let mut file_name = hex::encode(&sha1);
             file_name.push_str(".zip");
 
-            let mut f = File::create(package_dir.join(file_name))?;
+            let file_path = package_dir.join(file_name);
+
+            if file_path.exists() {
+                continue;
+            }
+            let content = reqwest::Client::new()
+                .get(dist.url.clone())
+                .header(USER_AGENT, "tu6ge/composer2")
+                .send()
+                .await?
+                .bytes()
+                .await?;
+
+            let mut f = File::create(file_path)?;
             f.write_all(&content)?;
 
             //break;
