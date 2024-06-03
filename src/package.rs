@@ -168,10 +168,9 @@ impl P2 {
         let cache_dir = home_dir()
             .ok_or(ComposerError::NotFoundHomeDir)?
             .join(CACHE_DIR);
-        let repo_dir = cache_dir.join("repo");
-        remove_dir_all(repo_dir)?;
+        remove_dir_all(cache_dir.join("repo"))?;
 
-        // TODO other dir
+        remove_dir_all(cache_dir.join("files"))?;
 
         Ok(())
     }
@@ -267,6 +266,7 @@ impl ComposerLock {
 
     pub async fn down_package(&self) -> Result<(), ComposerError> {
         use dirs::home_dir;
+        use sha1::{Digest, Sha1};
         use std::fs::create_dir_all;
 
         let cache_dir = home_dir()
@@ -290,7 +290,11 @@ impl ComposerLock {
             let package_dir = repo_dir.join(name.clone());
             create_dir_all(&package_dir)?;
 
-            let mut file_name = String::from(dist.reference.clone());
+            let mut hasher = Sha1::new();
+            hasher.update(item.version.as_bytes());
+            let sha1 = hasher.finalize();
+
+            let mut file_name = hex::encode(&sha1);
             file_name.push_str(".zip");
 
             let mut f = File::create(package_dir.join(file_name))?;
