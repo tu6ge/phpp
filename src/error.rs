@@ -1,9 +1,5 @@
-use std::{
-    fmt::{self, Display},
-    num::ParseIntError,
-};
+use std::fmt::{self, Display};
 
-use reqwest::header::{InvalidHeaderValue, ToStrError};
 use thiserror::Error;
 use zip::result::ZipError;
 
@@ -18,8 +14,6 @@ pub enum ComposerError {
     NotFoundPackage(String),
 
     NotFoundHomeDir,
-
-    NotFoundPackageName(String),
 
     Zip(#[from] ZipError),
 }

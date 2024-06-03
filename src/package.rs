@@ -117,7 +117,6 @@ impl P2 {
     }
 
     pub fn file_exists(name: &str) -> bool {
-        use dirs::home_dir;
         let cache_dir = home_dir().unwrap().join(CACHE_DIR);
         let repo_dir = cache_dir.join("repo");
 
@@ -129,9 +128,6 @@ impl P2 {
     }
 
     pub fn save(name: &str, content: &str) -> Result<(), ComposerError> {
-        use dirs::home_dir;
-        use std::fs::create_dir_all;
-
         let cache_dir = home_dir()
             .ok_or(ComposerError::NotFoundHomeDir)?
             .join(CACHE_DIR);
@@ -148,8 +144,6 @@ impl P2 {
         Ok(())
     }
     pub fn read_file(name: &str) -> Result<String, ComposerError> {
-        use dirs::home_dir;
-
         let cache_dir = home_dir()
             .ok_or(ComposerError::NotFoundHomeDir)?
             .join(CACHE_DIR);
@@ -165,7 +159,6 @@ impl P2 {
     }
 
     pub fn clear() -> Result<(), ComposerError> {
-        use dirs::home_dir;
         use std::fs::remove_dir_all;
         let cache_dir = home_dir()
             .ok_or(ComposerError::NotFoundHomeDir)?

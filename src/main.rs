@@ -1,16 +1,11 @@
-use core::panic;
 use std::{
     collections::HashSet,
-    fs::File,
-    io::Write,
-    path::Path,
     sync::{Arc, Mutex},
 };
 
 use app::App;
 use clap::{Parser, Subcommand};
-use error::ComposerError;
-use package::{ComposerLock, Version, P2};
+use package::{ComposerLock, P2};
 
 mod app;
 mod error;
@@ -20,7 +15,7 @@ mod package;
 async fn main() {
     let cli = Cli::parse();
 
-    let app = App {};
+    let _app = App {};
 
     let list = Vec::new();
     let versions = Arc::new(Mutex::new(list));
@@ -28,8 +23,8 @@ async fn main() {
     let version_hash = Arc::new(Mutex::new(version_hash_set));
 
     match &cli.command {
-        Commands::Required { name } => {
-            let res = P2::new(
+        Commands::Require { name } => {
+            let _ = P2::new(
                 name.to_owned(),
                 None,
                 versions.clone(),
@@ -60,6 +55,6 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Required { name: String },
+    Require { name: String },
     Clear,
 }
