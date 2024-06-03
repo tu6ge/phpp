@@ -18,7 +18,7 @@ use tokio::time::sleep;
 use crate::error::ComposerError;
 
 const PACKAGE_URL: &'static str = "https://repo.packagist.org/p2/";
-const CACHE_DIR: &'static str = ".cache/composer2";
+const CACHE_DIR: &'static str = ".cache/phpp";
 const MY_USER_AGENT: &'static str = "tu6ge/phpp";
 
 #[derive(Debug, Deserialize, Clone)]
