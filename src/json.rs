@@ -45,6 +45,8 @@ impl Composer {
             packages.down_package().await.expect("download dist failed");
 
             packages.install_package().expect("install package failed");
+
+            packages.write_psr4()?;
         }
 
         Ok(())
