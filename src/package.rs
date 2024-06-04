@@ -262,6 +262,7 @@ impl ComposerLock {
         self.write_autoload_real()?;
         self.write_autoload_static()?;
         self.write_platform_check()?;
+        self.write_autoload_classmap()?;
         self.write_autoload()?;
 
         self.write_autoload_files()?;
@@ -510,6 +511,19 @@ return array(
 
         Ok(())
     }
+    fn write_autoload_classmap(&self) -> Result<(), ComposerError> {
+        let content = include_str!("../asset/autoload_classmap.php");
+
+        let path = Path::new("./vendor/composer");
+        if !path.exists() {
+            create_dir_all(path)?;
+        }
+        let path = path.join("autoload_classmap.php");
+        let mut f = File::create(path)?;
+        f.write_all(content.as_bytes())?;
+
+        Ok(())
+    }
 
     fn get_autoload_files(&self) -> Result<Vec<String>, ComposerError> {
         let mut res = Vec::new();
@@ -616,9 +630,9 @@ return array(
         let mut psr4_dir_content = String::new();
         for (key, val) in psr4.iter() {
             psr4_dir_content.push_str(&format!(
-                "        '{}' => array(\n            0=> __DIR__ . '/..' . '{}',\n        ),\n",
+                "        '{}' => array(\n            0=> __DIR__ . '/..' . '/{}',\n        ),\n",
                 key.replace("\\", "\\\\"),
-                val
+                &val[..val.len() - 1]
             ));
         }
 

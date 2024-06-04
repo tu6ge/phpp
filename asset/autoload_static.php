@@ -21,7 +21,9 @@ __PSR4_DIRS__
 
     public static $prefixesPsr0 = array ();
 
-    public static $classMap = array ();
+    public static $classMap = array (
+        'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
+    );
 
     public static function getInitializer(ClassLoader $loader)
     {
