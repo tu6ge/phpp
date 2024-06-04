@@ -258,6 +258,12 @@ impl ComposerLock {
 
         self.write_installed_versions()?;
 
+        self.write_class_loader()?;
+        self.write_autoload_real()?;
+        self.write_autoload_static()?;
+        self.write_platform_check()?;
+        self.write_autoload()?;
+
         self.write_autoload_files()?;
 
         Ok(())
@@ -452,6 +458,58 @@ return array(
 
         Ok(())
     }
+    fn write_class_loader(&self) -> Result<(), ComposerError> {
+        let content = include_str!("../asset/ClassLoader.php");
+
+        let path = Path::new("./vendor/composer/");
+        if !path.exists() {
+            create_dir_all(path)?;
+        }
+        let path = path.join("ClassLoader.php");
+        let mut f = File::create(path)?;
+        f.write_all(content.as_bytes())?;
+
+        Ok(())
+    }
+    fn write_autoload_real(&self) -> Result<(), ComposerError> {
+        let content = include_str!("../asset/autoload_real.php");
+
+        let path = Path::new("./vendor/composer/");
+        if !path.exists() {
+            create_dir_all(path)?;
+        }
+        let path = path.join("autoload_real.php");
+        let mut f = File::create(path)?;
+        f.write_all(content.as_bytes())?;
+
+        Ok(())
+    }
+    fn write_platform_check(&self) -> Result<(), ComposerError> {
+        let content = include_str!("../asset/platform_check.php");
+
+        let path = Path::new("./vendor/composer/");
+        if !path.exists() {
+            create_dir_all(path)?;
+        }
+        let path = path.join("platform_check.php");
+        let mut f = File::create(path)?;
+        f.write_all(content.as_bytes())?;
+
+        Ok(())
+    }
+    fn write_autoload(&self) -> Result<(), ComposerError> {
+        let content = include_str!("../asset/autoload.php");
+
+        let path = Path::new("./vendor/");
+        if !path.exists() {
+            create_dir_all(path)?;
+        }
+        let path = path.join("autoload.php");
+        let mut f = File::create(path)?;
+        f.write_all(content.as_bytes())?;
+
+        Ok(())
+    }
 
     fn get_autoload_files(&self) -> Result<Vec<String>, ComposerError> {
         let mut res = Vec::new();
@@ -502,6 +560,79 @@ return array(
             create_dir_all(path)?;
         }
         let path = path.join("autoload_files.php");
+        let mut f = File::create(path)?;
+        f.write_all(content.as_bytes())?;
+
+        Ok(())
+    }
+
+    fn write_autoload_static(&self) -> Result<(), ComposerError> {
+        use sha1::Digest;
+        use sha1::Sha1;
+
+        let mut files_content = String::new();
+
+        let files = self.get_autoload_files()?;
+        for item in files.iter() {
+            let mut hasher = Sha1::new();
+            hasher.update(item.as_bytes());
+            let sha1 = hasher.finalize();
+
+            let key = hex::encode(&sha1);
+            files_content.push_str(&format!(
+                "        '{}' => __DIR__ . '/..' . '{}',\n",
+                key, item
+            ));
+        }
+
+        let mut psr4_length_map = HashMap::new();
+        let psr4 = self.get_psr4()?;
+        for (key, _) in psr4.iter() {
+            let first = key.chars().next().unwrap();
+            psr4_length_map
+                .entry(first)
+                .and_modify(|v: &mut Vec<&String>| v.push(key))
+                .or_insert(vec![key]);
+        }
+        let mut psr4_length_vec = Vec::new();
+        for (key, v) in psr4_length_map.iter() {
+            psr4_length_vec.push((key, v));
+        }
+        psr4_length_vec.sort_by(|a, b| b.0.cmp(&a.0));
+
+        let mut psr4_length_content = String::new();
+        for (ch, vec) in psr4_length_vec.iter() {
+            psr4_length_content.push_str(&format!("        '{}' => array (\n", ch));
+            for it in vec.clone() {
+                psr4_length_content.push_str(&format!(
+                    "            '{}' => {},\n",
+                    it.replace("\\", "\\\\"),
+                    it.len()
+                ));
+            }
+            psr4_length_content.push_str("        ),\n");
+        }
+
+        let mut psr4_dir_content = String::new();
+        for (key, val) in psr4.iter() {
+            psr4_dir_content.push_str(&format!(
+                "        '{}' => array(\n            0=> __DIR__ . '/..' . '{}',\n        ),\n",
+                key.replace("\\", "\\\\"),
+                val
+            ));
+        }
+
+        let content = include_str!("../asset/autoload_static.php");
+
+        let content = content.replace("__FILES_CONTENT__", &files_content);
+        let content = content.replace("__PSR4_LENGTH__", &psr4_length_content);
+        let content = content.replace("__PSR4_DIRS__", &psr4_dir_content);
+
+        let path = Path::new("./vendor/composer/");
+        if !path.exists() {
+            create_dir_all(path)?;
+        }
+        let path = path.join("autoload_static.php");
         let mut f = File::create(path)?;
         f.write_all(content.as_bytes())?;
 
