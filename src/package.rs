@@ -11,7 +11,7 @@ use std::{
 
 use dirs::home_dir;
 use reqwest::header::USER_AGENT;
-use semver::VersionReq;
+use semver::{Prerelease, VersionReq};
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 
@@ -59,15 +59,26 @@ impl P2 {
             let version_list = tree.packages.get(&name).expect("abc");
             //.ok_or(ComposerError::NotFoundPackageName(name.to_owned()))?;
 
-            let mut info = &version_list[0];
+            let mut info = version_list[0].clone();
             if let Some(req) = version {
                 for item in version_list.iter() {
                     if Self::semver_check(&name, &req, &item.version) {
-                        info = item;
+                        info = item.clone();
                         break;
                     }
                 }
+            } else {
+                // find last stable version
+                for item in version_list.iter() {
+                    let version = item.version()?;
+                    if version.pre == Prerelease::EMPTY {
+                        info = item.clone();
+                        break;
+                    }
+                }
+                ctx.lock().unwrap().first_package = Some(info.clone());
             }
+            info.name = Some(name.to_owned());
 
             ctx.lock().unwrap().versions.push(info.clone());
             ctx.lock().unwrap().hash_set.insert(name.to_owned());
@@ -714,6 +725,23 @@ pub struct Version {
     autoload: Option<AutoloadEnum>,
 }
 
+impl Version {
+    pub fn version(&self) -> Result<semver::Version, ComposerError> {
+        let mut chars = self.version.chars();
+        let first_char = chars.next();
+        let version = if let Some('v') = first_char {
+            &self.version[1..]
+        } else if let Some('V') = first_char {
+            &self.version[1..]
+        } else {
+            &self.version[..]
+        };
+        let version = semver::Version::parse(version)?;
+
+        Ok(version)
+    }
+}
+
 #[derive(Debug, Deserialize, Clone, Serialize)]
 struct Source {
     #[serde(rename = "type")]
@@ -781,6 +809,7 @@ enum AutoLoadClassmap {
 pub(crate) struct Context {
     versions: Vec<Version>,
     hash_set: HashSet<String>,
+    pub(crate) first_package: Option<Version>,
 }
 
 #[cfg(test)]
@@ -820,5 +849,8 @@ mod tests {
         let chars = "1.2.4".chars();
         let dot_count = chars.filter(|&c| c == '.').count();
         assert_eq!(dot_count, 2);
+
+        let version = semver::Version::parse("5.0.8").unwrap();
+        assert!(version.pre == Prerelease::EMPTY);
     }
 }

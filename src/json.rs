@@ -37,6 +37,22 @@ impl Composer {
                 let _ = P2::new(name.to_owned(), None, ctx.clone())
                     .await
                     .expect("download error");
+
+                let c = ctx.lock().unwrap();
+                if let Some(p) = &c.first_package {
+                    let version = &p.version;
+                    let mut this = Self::new()?;
+
+                    let mut require = this.require.take().unwrap();
+
+                    require
+                        .entry(name.clone())
+                        .and_modify(|e| *e = version.clone());
+
+                    this.require = Some(require);
+
+                    this.save();
+                }
             }
 
             let packages = ComposerLock::new(ctx);

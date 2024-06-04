@@ -16,6 +16,8 @@ pub enum ComposerError {
     NotFoundHomeDir,
 
     Zip(#[from] ZipError),
+
+    Semver(#[from] semver::Error),
 }
 
 impl Display for ComposerError {
