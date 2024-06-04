@@ -1,5 +1,13 @@
 # php composer by rust, 
 
-now , it named composer2
+now , it named phpp
 
-developing ...
+*developing! Dont used producting*
+
+
+support subcommand :
+
+- require
+- install
+- remove
+- clear
