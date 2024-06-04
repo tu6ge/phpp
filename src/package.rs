@@ -419,19 +419,31 @@ return array(
         );
 
         let list = self.get_psr4()?;
+        let mut psr4_dir_map = HashMap::new();
         for (key, val) in list.iter() {
-            let val: &str = if val.chars().last().unwrap() == '/' {
-                &val[..val.len() - 1]
-            } else {
-                &val
-            };
-
-            let item_con = format!(
-                "    '{}' => array($vendorDir . '/{}'),\n",
-                key.replace("\\", "\\\\"),
-                val
-            );
+            psr4_dir_map
+                .entry(key)
+                .and_modify(|v: &mut Vec<&String>| v.push(val))
+                .or_insert(vec![val]);
+        }
+        let mut psr4_dir_vec = Vec::new();
+        for (key, val) in psr4_dir_map.iter() {
+            psr4_dir_vec.push((key, val));
+        }
+        psr4_dir_vec.sort_by(|a, b| b.0.cmp(&a.0));
+        for (key, val) in psr4_dir_vec.iter() {
+            let item_con = format!("    '{}' => array(\n        ", key.replace("\\", "\\\\"),);
             content.push_str(&item_con);
+
+            for val in val.iter() {
+                let val: &str = if val.chars().last().unwrap() == '/' {
+                    &val[..val.len() - 1]
+                } else {
+                    &val
+                };
+                content.push_str(&format!("$vendorDir . '/{}',", val));
+            }
+            content.push_str("\n    ),\n");
         }
         content.push_str(");");
 
@@ -627,13 +639,36 @@ return array(
             psr4_length_content.push_str("        ),\n");
         }
 
-        let mut psr4_dir_content = String::new();
+        let mut psr4_dir_map = HashMap::new();
         for (key, val) in psr4.iter() {
+            psr4_dir_map
+                .entry(key)
+                .and_modify(|v: &mut Vec<&String>| v.push(val))
+                .or_insert(vec![val]);
+        }
+        let mut psr4_dir_vec = Vec::new();
+        for (key, val) in psr4_dir_map.iter() {
+            psr4_dir_vec.push((key, val));
+        }
+        psr4_dir_vec.sort_by(|a, b| b.0.cmp(&a.0));
+
+        let mut psr4_dir_content = String::new();
+
+        for (key, val) in psr4_dir_vec.iter() {
             psr4_dir_content.push_str(&format!(
-                "        '{}' => array(\n            0=> __DIR__ . '/..' . '/{}',\n        ),\n",
-                key.replace("\\", "\\\\"),
-                &val[..val.len() - 1]
+                "        '{}' => array(\n",
+                key.replace("\\", "\\\\")
             ));
+            let mut i = 0_u8;
+            for it in val.iter() {
+                psr4_dir_content.push_str(&format!(
+                    "            {}=> __DIR__ . '/..' . '/{}',\n",
+                    i,
+                    &it[..it.len() - 1]
+                ));
+                i += 1;
+            }
+            psr4_dir_content.push_str("        ),\n");
         }
 
         let content = include_str!("../asset/autoload_static.php");
