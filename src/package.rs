@@ -629,7 +629,7 @@ return array(
         let mut psr4_length_content = String::new();
         for (ch, vec) in psr4_length_vec.iter() {
             psr4_length_content.push_str(&format!("        '{}' => array (\n", ch));
-            for it in vec.clone() {
+            for it in vec.iter() {
                 psr4_length_content.push_str(&format!(
                     "            '{}' => {},\n",
                     it.replace("\\", "\\\\"),
