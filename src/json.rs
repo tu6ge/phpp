@@ -42,17 +42,7 @@ impl Composer {
                 if let Some(p) = &c.first_package {
                     let version = &p.version;
                     let mut this = Self::new()?;
-
-                    let mut require = this.require.take().unwrap();
-
-                    require.entry(name.clone()).and_modify(|e| {
-                        if e == "*" {
-                            *e = version.clone()
-                        }
-                    });
-
-                    this.require = Some(require);
-
+                    this.set_version(name, version);
                     this.save();
                 }
             }
@@ -63,6 +53,17 @@ impl Composer {
         }
 
         Ok(())
+    }
+
+    fn set_version(&mut self, name: &str, version: &str) {
+        if let Some(mut list) = self.require.take() {
+            list.entry(name.to_string()).and_modify(|e| {
+                if e == "*" {
+                    *e = version.to_string();
+                }
+            });
+            self.require = Some(list);
+        }
     }
 
     pub fn insert(&mut self, name: &str) -> Result<(), ComposerError> {
