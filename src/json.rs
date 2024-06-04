@@ -45,9 +45,11 @@ impl Composer {
 
                     let mut require = this.require.take().unwrap();
 
-                    require
-                        .entry(name.clone())
-                        .and_modify(|e| *e = version.clone());
+                    require.entry(name.clone()).and_modify(|e| {
+                        if e == "*" {
+                            *e = version.clone()
+                        }
+                    });
 
                     this.require = Some(require);
 
