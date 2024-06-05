@@ -17,9 +17,9 @@ use tokio::time::sleep;
 
 use crate::error::ComposerError;
 
-const PACKAGE_URL: &'static str = "https://repo.packagist.org/p2/";
-const CACHE_DIR: &'static str = ".cache/phpp";
-const MY_USER_AGENT: &'static str = "tu6ge/phpp";
+const PACKAGE_URL: &str = "https://repo.packagist.org/p2/";
+const CACHE_DIR: &str = ".cache/phpp";
+const MY_USER_AGENT: &str = "tu6ge/phpp";
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct P2 {
@@ -27,13 +27,13 @@ pub struct P2 {
 }
 
 impl P2 {
-    pub fn new(
+    pub fn down_all(
         name: String,
         version: Option<String>,
         ctx: Arc<Mutex<Context>>,
     ) -> Pin<Box<dyn Future<Output = Result<(), ComposerError>> + Send>> {
         Box::pin(async move {
-            if let Some(_) = ctx.lock().unwrap().hash_set.get(&name) {
+            if ctx.lock().unwrap().hash_set.get(&name).is_some() {
                 return Ok(());
             }
 
@@ -41,7 +41,7 @@ impl P2 {
             let json = if exists {
                 Self::read_file(&name)?
             } else {
-                let _ = sleep(Duration::from_millis(200));
+                sleep(Duration::from_millis(200)).await;
 
                 let json = match Self::down(&name).await {
                     Ok(json) => json,
@@ -53,6 +53,7 @@ impl P2 {
                 json
             };
 
+            #[allow(clippy::expect_fun_call)]
             let tree: P2 = serde_json::from_str(&json)
                 .expect(&format!("parse json failed, package: {}", name));
 
@@ -96,7 +97,8 @@ impl P2 {
                         // require ext-dom * -> it is missing from your system. Install or enable PHP's dom extension.
                         continue;
                     } else {
-                        P2::new(dep_name.to_owned(), Some(version.to_owned()), ctx.clone()).await?;
+                        P2::down_all(dep_name.to_owned(), Some(version.to_owned()), ctx.clone())
+                            .await?;
                     }
                 }
             }
@@ -127,7 +129,7 @@ impl P2 {
             .join(CACHE_DIR);
         let repo_dir = cache_dir.join("repo");
 
-        let name_dir = name.replace("/", "-");
+        let name_dir = name.replace('/', "-");
         let filename = format!("provider-{}.json", name_dir);
         let final_path = repo_dir.join(filename);
 
@@ -141,7 +143,7 @@ impl P2 {
         let repo_dir = cache_dir.join("repo");
         create_dir_all(&repo_dir)?;
 
-        let name_dir = name.replace("/", "-");
+        let name_dir = name.replace('/', "-");
         let filename = format!("provider-{}.json", name_dir);
         let final_path = repo_dir.join(filename);
 
@@ -156,7 +158,7 @@ impl P2 {
             .join(CACHE_DIR);
         let repo_dir = cache_dir.join("repo");
 
-        let name_dir = name.replace("/", "-");
+        let name_dir = name.replace('/', "-");
         let filename = format!("provider-{}.json", name_dir);
         let final_path = repo_dir.join(filename);
 
@@ -185,19 +187,20 @@ impl P2 {
         } else if let Some('V') = first_char {
             &version[1..]
         } else {
-            &version[..]
+            version
         };
         let chars = version.chars();
         let dot_count = chars.filter(|&c| c == '.').count();
         let version = if dot_count == 1 {
             format!("{}.0", version)
         } else {
-            format!("{}", version)
+            version.to_string()
         };
 
+        #[allow(clippy::expect_fun_call)]
         let version = semver::Version::parse(&version)
             .expect(&format!("{}[{}] is not a valid version", name, version));
-        if let Some(_) = req.find("||") {
+        if req.contains("||") {
             let mut parts = Vec::new();
             for item in req.split("||") {
                 parts.push(item);
@@ -212,9 +215,9 @@ impl P2 {
             }
 
             Ok(false)
-        } else if let Some(_) = req.find("|") {
+        } else if req.find('|').is_some() {
             let mut parts = Vec::new();
-            for item in req.split("|") {
+            for item in req.split('|') {
                 parts.push(item);
             }
             for item in parts.into_iter().rev() {
@@ -246,7 +249,7 @@ impl ComposerLock {
 
         let mut packages = Vec::new();
         for item in ls.iter() {
-            if let Some(_) = item.name {
+            if item.name.is_some() {
                 packages.push(item.clone());
             }
         }
@@ -333,7 +336,7 @@ impl ComposerLock {
     pub fn save_file(&self) -> Result<(), ComposerError> {
         let path = Path::new("./composer.lock");
         let mut f = File::create(path)?;
-        f.write(self.json()?.as_bytes())?;
+        f.write_all(self.json()?.as_bytes())?;
 
         Ok(())
     }
@@ -350,7 +353,7 @@ impl ComposerLock {
         for item in self.packages.iter() {
             let dist = &item.dist.as_ref().expect("not found dist field");
 
-            let name = item.name.as_ref().expect(&format!("not found name"));
+            let name = item.name.as_ref().expect("not found name");
 
             let package_dir = repo_dir.join(name.clone());
             create_dir_all(&package_dir)?;
@@ -359,7 +362,7 @@ impl ComposerLock {
             hasher.update(item.version.as_bytes());
             let sha1 = hasher.finalize();
 
-            let mut file_name = hex::encode(&sha1);
+            let mut file_name = hex::encode(sha1);
             file_name.push_str(".zip");
 
             let file_path = package_dir.join(file_name);
@@ -394,10 +397,10 @@ impl ComposerLock {
         let repo_dir = cache_dir.join("files");
 
         let vendor_dir = Path::new("./vendor");
-        create_dir_all(&vendor_dir)?;
+        create_dir_all(vendor_dir)?;
 
         for item in self.packages.iter() {
-            let name = item.name.as_ref().expect(&format!("not found name"));
+            let name = item.name.as_ref().expect("not found name");
 
             println!("  - Installing {}({})", name, item.version);
 
@@ -410,7 +413,7 @@ impl ComposerLock {
             hasher.update(item.version.as_bytes());
             let sha1 = hasher.finalize();
 
-            let mut file_name = hex::encode(&sha1);
+            let mut file_name = hex::encode(sha1);
             file_name.push_str(".zip");
 
             let file_path = package_dir.join(file_name);
@@ -449,15 +452,16 @@ impl ComposerLock {
     fn get_psr4(&self) -> Result<Vec<(String, String)>, ComposerError> {
         let mut res = Vec::new();
         for item in self.packages.iter() {
-            if let Some(AutoloadEnum::Psr(Autoload { psr4, .. })) = &item.autoload {
-                if let Some(psr) = psr4 {
-                    for (key, value) in psr.iter() {
-                        if let PsrValue::String(value) = value {
-                            let mut v = item.name.as_ref().unwrap().clone();
-                            v.push_str("/");
-                            v.push_str(value);
-                            res.push((key.to_owned(), v));
-                        }
+            if let Some(AutoloadEnum::Psr(Autoload {
+                psr4: Some(psr), ..
+            })) = &item.autoload
+            {
+                for (key, value) in psr.iter() {
+                    if let PsrValue::String(value) = value {
+                        let mut v = item.name.as_ref().unwrap().clone();
+                        v.push('/');
+                        v.push_str(value);
+                        res.push((key.to_owned(), v));
                     }
                 }
             }
@@ -492,16 +496,16 @@ return array(
         for (key, val) in psr4_dir_map.iter() {
             psr4_dir_vec.push((key, val));
         }
-        psr4_dir_vec.sort_by(|a, b| b.0.cmp(&a.0));
+        psr4_dir_vec.sort_by(|a, b| b.0.cmp(a.0));
         for (key, val) in psr4_dir_vec.iter() {
-            let item_con = format!("    '{}' => array(\n        ", key.replace("\\", "\\\\"),);
+            let item_con = format!("    '{}' => array(\n        ", key.replace('\\', "\\\\"),);
             content.push_str(&item_con);
 
             for val in val.iter() {
-                let val: &str = if val.chars().last().unwrap() == '/' {
+                let val: &str = if val.ends_with('/') {
                     &val[..val.len() - 1]
                 } else {
-                    &val
+                    val
                 };
                 content.push_str(&format!("$vendorDir . '/{}',", val));
             }
@@ -637,7 +641,7 @@ return array(
             hasher.update(item.as_bytes());
             let sha1 = hasher.finalize();
 
-            let key = hex::encode(&sha1);
+            let key = hex::encode(sha1);
             content.push_str(&format!("    '{}' => $vendorDir . '{}',\n", key, item));
         }
 
@@ -666,7 +670,7 @@ return array(
             hasher.update(item.as_bytes());
             let sha1 = hasher.finalize();
 
-            let key = hex::encode(&sha1);
+            let key = hex::encode(sha1);
             files_content.push_str(&format!(
                 "        '{}' => __DIR__ . '/..' . '{}',\n",
                 key, item
@@ -686,7 +690,7 @@ return array(
         for (key, v) in psr4_length_map.iter() {
             psr4_length_vec.push((key, v));
         }
-        psr4_length_vec.sort_by(|a, b| b.0.cmp(&a.0));
+        psr4_length_vec.sort_by(|a, b| b.0.cmp(a.0));
 
         let mut psr4_length_content = String::new();
         for (ch, vec) in psr4_length_vec.iter() {
@@ -694,7 +698,7 @@ return array(
             for it in vec.iter() {
                 psr4_length_content.push_str(&format!(
                     "            '{}' => {},\n",
-                    it.replace("\\", "\\\\"),
+                    it.replace('\\', "\\\\"),
                     it.len()
                 ));
             }
@@ -712,23 +716,21 @@ return array(
         for (key, val) in psr4_dir_map.iter() {
             psr4_dir_vec.push((key, val));
         }
-        psr4_dir_vec.sort_by(|a, b| b.0.cmp(&a.0));
+        psr4_dir_vec.sort_by(|a, b| b.0.cmp(a.0));
 
         let mut psr4_dir_content = String::new();
 
         for (key, val) in psr4_dir_vec.iter() {
             psr4_dir_content.push_str(&format!(
                 "        '{}' => array(\n",
-                key.replace("\\", "\\\\")
+                key.replace('\\', "\\\\")
             ));
-            let mut i = 0_u8;
-            for it in val.iter() {
+            for (i, it) in val.iter().enumerate() {
                 psr4_dir_content.push_str(&format!(
                     "            {}=> __DIR__ . '/..' . '/{}',\n",
                     i,
                     &it[..it.len() - 1]
                 ));
-                i += 1;
             }
             psr4_dir_content.push_str("        ),\n");
         }

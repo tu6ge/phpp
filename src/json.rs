@@ -34,9 +34,10 @@ impl Composer {
         let list = self.require.take();
         if let Some(list) = list {
             for (name, version) in list.iter() {
-                let mut c = ctx.lock().unwrap();
-                c.first_package = None;
-                drop(c);
+                {
+                    let mut c = ctx.lock().unwrap();
+                    c.first_package = None;
+                }
 
                 let version = if version == "*" {
                     None
@@ -44,7 +45,7 @@ impl Composer {
                     Some(version.to_owned())
                 };
 
-                let _ = P2::new(name.to_owned(), version, ctx.clone())
+                P2::down_all(name.to_owned(), version, ctx.clone())
                     .await
                     .expect("download error");
 
@@ -117,7 +118,7 @@ impl Composer {
             let path = vendor.join(item);
             if let Some(parent) = path.parent() {
                 if let Ok(res) = has_files(parent) {
-                    if res == false {
+                    if !res {
                         remove_dir_all(parent)?;
                     }
                 }
