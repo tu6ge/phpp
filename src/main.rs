@@ -1,5 +1,6 @@
 use app::App;
 use clap::{Parser, Subcommand};
+use error::ComposerError;
 use json::Composer;
 use package::P2;
 
@@ -9,30 +10,32 @@ mod json;
 mod package;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), ComposerError> {
     let cli = Cli::parse();
 
     let _app = App {};
-    let mut composer = Composer::new().unwrap();
+    let mut composer = Composer::new()?;
 
     match &cli.command {
         Commands::Require { name, version } => {
-            composer.insert(name, version.clone()).unwrap();
-            composer.save();
+            composer.insert(name, version.clone())?;
+            composer.save()?;
 
-            composer.install().await.unwrap();
+            composer.install().await?;
         }
         Commands::Install => {
-            composer.install().await.unwrap();
+            composer.install().await?;
         }
         Commands::Clear => {
             P2::clear().expect("clear dir failed");
         }
         Commands::Remove { name } => {
-            composer.remove(name).await.unwrap();
-            composer.save();
+            composer.remove(name).await?;
+            composer.save()?;
         }
     }
+
+    Ok(())
 }
 
 #[derive(Parser)]

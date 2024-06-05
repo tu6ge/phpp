@@ -53,7 +53,7 @@ impl Composer {
                     let version = &p.version;
                     let mut this = Self::new()?;
                     this.set_version(name, version);
-                    this.save();
+                    this.save()?;
                 }
             }
         }
@@ -106,7 +106,7 @@ impl Composer {
         }
 
         let new_lock = self.clone().get_lock().await?;
-        let old_lock = ComposerLock::from_file();
+        let old_lock = ComposerLock::from_file()?;
         let deleteing = old_lock.get_deleteing_packages(&new_lock)?;
 
         let vendor = Path::new("./vendor");
@@ -115,10 +115,11 @@ impl Composer {
         }
         for item in deleteing.iter() {
             let path = vendor.join(item);
-            let parent = path.parent().unwrap();
-            if let Ok(res) = has_files(parent) {
-                if res == false {
-                    remove_dir_all(parent)?;
+            if let Some(parent) = path.parent() {
+                if let Ok(res) = has_files(parent) {
+                    if res == false {
+                        remove_dir_all(parent)?;
+                    }
                 }
             }
         }
@@ -139,10 +140,12 @@ impl Composer {
         Ok(())
     }
 
-    pub fn save(&self) {
+    pub fn save(&self) -> Result<(), ComposerError> {
         let path = Path::new("./composer.json");
-        let mut f = File::create(path).unwrap();
-        let content = serde_json::to_string_pretty(&self).unwrap();
-        f.write_all(content.as_bytes()).unwrap();
+        let mut f = File::create(path)?;
+        let content = serde_json::to_string_pretty(&self)?;
+        f.write_all(content.as_bytes())?;
+
+        Ok(())
     }
 }

@@ -37,7 +37,7 @@ impl P2 {
                 return Ok(());
             }
 
-            let exists = Self::file_exists(&name);
+            let exists = Self::file_exists(&name)?;
             let json = if exists {
                 Self::read_file(&name)?
             } else {
@@ -49,7 +49,7 @@ impl P2 {
                     Err(e) => return Err(e),
                 };
 
-                Self::save(&name, &json).unwrap();
+                Self::save(&name, &json)?;
                 json
             };
 
@@ -62,7 +62,7 @@ impl P2 {
             let mut info = version_list[0].clone();
             if let Some(req) = version {
                 for item in version_list.iter() {
-                    if Self::semver_check(&name, &req, &item.version) {
+                    if Self::semver_check(&name, &req, &item.version)? {
                         info = item.clone();
                         break;
                     }
@@ -121,15 +121,17 @@ impl P2 {
         Ok(json)
     }
 
-    pub fn file_exists(name: &str) -> bool {
-        let cache_dir = home_dir().unwrap().join(CACHE_DIR);
+    pub fn file_exists(name: &str) -> Result<bool, ComposerError> {
+        let cache_dir = home_dir()
+            .ok_or(ComposerError::NotFoundHomeDir)?
+            .join(CACHE_DIR);
         let repo_dir = cache_dir.join("repo");
 
         let name_dir = name.replace("/", "-");
         let filename = format!("provider-{}.json", name_dir);
         let final_path = repo_dir.join(filename);
 
-        final_path.exists()
+        Ok(final_path.exists())
     }
 
     pub fn save(name: &str, content: &str) -> Result<(), ComposerError> {
@@ -175,7 +177,7 @@ impl P2 {
         Ok(())
     }
 
-    pub fn semver_check(name: &str, req: &str, version: &str) -> bool {
+    pub fn semver_check(name: &str, req: &str, version: &str) -> Result<bool, ComposerError> {
         let mut chars = version.chars();
         let first_char = chars.next();
         let version = if let Some('v') = first_char {
@@ -202,14 +204,14 @@ impl P2 {
             }
             for item in parts.into_iter().rev() {
                 let req = item.trim();
-                let req = VersionReq::parse(req).unwrap();
+                let req = VersionReq::parse(req)?;
 
                 if req.matches(&version) {
-                    return true;
+                    return Ok(true);
                 }
             }
 
-            false
+            Ok(false)
         } else if let Some(_) = req.find("|") {
             let mut parts = Vec::new();
             for item in req.split("|") {
@@ -217,18 +219,18 @@ impl P2 {
             }
             for item in parts.into_iter().rev() {
                 let req = item.trim();
-                let req = VersionReq::parse(req).unwrap();
+                let req = VersionReq::parse(req)?;
 
                 if req.matches(&version) {
-                    return true;
+                    return Ok(true);
                 }
             }
 
-            false
+            Ok(false)
         } else {
-            let version_req = VersionReq::parse(req).unwrap();
+            let version_req = VersionReq::parse(req)?;
 
-            version_req.matches(&version)
+            Ok(version_req.matches(&version))
         }
     }
 }
@@ -254,13 +256,13 @@ impl ComposerLock {
         Self { packages }
     }
 
-    pub fn from_file() -> Self {
+    pub fn from_file() -> Result<Self, ComposerError> {
         let path = Path::new("./composer.lock");
-        let content = read_to_string(path).unwrap();
+        let content = read_to_string(path)?;
 
-        let this: Self = serde_json::from_str(&content).unwrap();
+        let this: Self = serde_json::from_str(&content)?;
 
-        this
+        Ok(this)
     }
 
     pub fn get_deleteing_packages(
@@ -282,16 +284,18 @@ impl ComposerLock {
         Ok(difference)
     }
 
-    pub fn json(&self) -> String {
-        serde_json::to_string_pretty(&self).unwrap()
+    pub fn json(&self) -> Result<String, ComposerError> {
+        let res = serde_json::to_string_pretty(&self)?;
+
+        Ok(res)
     }
 
     pub async fn installing(&self) -> Result<(), ComposerError> {
-        self.save_file();
+        self.save_file()?;
 
-        self.down_package().await.expect("download dist failed");
+        self.down_package().await?;
 
-        self.install_package().expect("install package failed");
+        self.install_package()?;
 
         self.write_psr4()?;
 
@@ -309,7 +313,7 @@ impl ComposerLock {
         Ok(())
     }
     pub fn update_autoload_files(&self) -> Result<(), ComposerError> {
-        self.save_file();
+        self.save_file()?;
         self.write_psr4()?;
 
         self.write_installed_versions()?;
@@ -326,10 +330,12 @@ impl ComposerLock {
         Ok(())
     }
 
-    pub fn save_file(&self) {
+    pub fn save_file(&self) -> Result<(), ComposerError> {
         let path = Path::new("./composer.lock");
-        let mut f = File::create(path).unwrap();
-        f.write(self.json().as_bytes()).unwrap();
+        let mut f = File::create(path)?;
+        f.write(self.json()?.as_bytes())?;
+
+        Ok(())
     }
 
     async fn down_package(&self) -> Result<(), ComposerError> {
@@ -342,7 +348,7 @@ impl ComposerLock {
         create_dir_all(&repo_dir)?;
 
         for item in self.packages.iter() {
-            let dist = &item.dist.as_ref().unwrap();
+            let dist = &item.dist.as_ref().expect("not found dist field");
 
             let name = item.name.as_ref().expect(&format!("not found name"));
 
@@ -414,7 +420,7 @@ impl ComposerLock {
             let mut archive = zip::ZipArchive::new(f)?;
 
             for i in 1..archive.len() {
-                let mut file = archive.by_index(i).unwrap();
+                let mut file = archive.by_index(i)?;
                 let outpath = match file.enclosed_name() {
                     Some(path) => path.to_owned(),
                     None => continue,
@@ -428,12 +434,12 @@ impl ComposerLock {
                 } else {
                     if let Some(p) = final_path.parent() {
                         if !p.exists() {
-                            create_dir_all(p).unwrap();
+                            create_dir_all(p)?;
                         }
                     }
 
-                    let mut outfile = File::create(&final_path).unwrap();
-                    std::io::copy(&mut file, &mut outfile).unwrap();
+                    let mut outfile = File::create(&final_path)?;
+                    std::io::copy(&mut file, &mut outfile)?;
                 }
             }
         }
@@ -884,11 +890,11 @@ mod tests {
 
     #[test]
     fn test_semver() {
-        assert!(P2::semver_check("name", "^7.0| ^8.0", "7.2.3"));
-        assert!(P2::semver_check("name", "^7.0| ^8.0", "8.2.3"));
-        assert!(!P2::semver_check("name", "^7.0| ^8.0", "9.2.3"));
-        assert!(!P2::semver_check("name", "^7.0|| ^8.0", "9.2.3"));
-        assert!(P2::semver_check("name", "^7.0| ^8.0", "8.0"));
+        assert!(P2::semver_check("name", "^7.0| ^8.0", "7.2.3").unwrap());
+        assert!(P2::semver_check("name", "^7.0| ^8.0", "8.2.3").unwrap());
+        assert!(!P2::semver_check("name", "^7.0| ^8.0", "9.2.3").unwrap());
+        assert!(!P2::semver_check("name", "^7.0|| ^8.0", "9.2.3").unwrap());
+        assert!(P2::semver_check("name", "^7.0| ^8.0", "8.0").unwrap());
         //assert!(P2::semver_check("5.1.0-RC1", "5.1.0-RC1"));
 
         let chars = "1.2.4".chars();
