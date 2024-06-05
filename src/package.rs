@@ -71,7 +71,7 @@ impl P2 {
             } else {
                 // find last stable version
                 for item in version_list.iter() {
-                    let version = item.version()?;
+                    let version = item.semver()?;
                     if version.pre == Prerelease::EMPTY {
                         info = item.clone();
                         break;
@@ -606,12 +606,13 @@ return array(
     fn get_autoload_files(&self) -> Result<Vec<String>, ComposerError> {
         let mut res = Vec::new();
         for item in self.packages.iter() {
-            if let Some(AutoloadEnum::Psr(Autoload { files, .. })) = &item.autoload {
-                if let Some(files) = files.clone() {
-                    for it in files {
-                        let con = format!("/{}/{}", item.name.as_ref().unwrap(), it);
-                        res.push(con);
-                    }
+            if let Some(AutoloadEnum::Psr(Autoload {
+                files: Some(files), ..
+            })) = &item.autoload
+            {
+                for it in files {
+                    let con = format!("/{}/{}", item.name.as_ref().unwrap(), it);
+                    res.push(con);
                 }
             }
         }
@@ -779,7 +780,7 @@ pub struct Version {
 }
 
 impl Version {
-    pub fn version(&self) -> Result<semver::Version, ComposerError> {
+    pub fn semver(&self) -> Result<semver::Version, ComposerError> {
         let mut chars = self.version.chars();
         let first_char = chars.next();
         let version = if let Some('v') = first_char {
