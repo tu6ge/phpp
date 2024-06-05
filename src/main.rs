@@ -29,7 +29,7 @@ async fn main() {
             P2::clear().expect("clear dir failed");
         }
         Commands::Remove { name } => {
-            composer.remove(name).unwrap();
+            composer.remove(name).await.unwrap();
             composer.save();
         }
     }

@@ -233,7 +233,7 @@ impl P2 {
     }
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ComposerLock {
     packages: Vec<Version>,
 }
@@ -254,6 +254,34 @@ impl ComposerLock {
         Self { packages }
     }
 
+    pub fn from_file() -> Self {
+        let path = Path::new("./composer.lock");
+        let content = read_to_string(path).unwrap();
+
+        let this: Self = serde_json::from_str(&content).unwrap();
+
+        this
+    }
+
+    pub fn get_deleteing_packages(
+        &self,
+        new_lock: &ComposerLock,
+    ) -> Result<HashSet<String>, ComposerError> {
+        let mut this_set = HashSet::new();
+
+        for item in self.packages.iter() {
+            this_set.insert(item.name.as_ref().unwrap().to_owned());
+        }
+        let mut new_set = HashSet::new();
+        for item in new_lock.packages.iter() {
+            new_set.insert(item.name.as_ref().unwrap().to_owned());
+        }
+
+        let difference: HashSet<_> = this_set.difference(&new_set).cloned().collect();
+
+        Ok(difference)
+    }
+
     pub fn json(&self) -> String {
         serde_json::to_string_pretty(&self).unwrap()
     }
@@ -265,6 +293,23 @@ impl ComposerLock {
 
         self.install_package().expect("install package failed");
 
+        self.write_psr4()?;
+
+        self.write_installed_versions()?;
+
+        self.write_class_loader()?;
+        self.write_autoload_real()?;
+        self.write_autoload_static()?;
+        self.write_platform_check()?;
+        self.write_autoload_classmap()?;
+        self.write_autoload()?;
+
+        self.write_autoload_files()?;
+
+        Ok(())
+    }
+    pub fn update_autoload_files(&self) -> Result<(), ComposerError> {
+        self.save_file();
         self.write_psr4()?;
 
         self.write_installed_versions()?;

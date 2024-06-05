@@ -2,7 +2,7 @@
 
 use std::{
     collections::HashMap,
-    fs::{read_to_string, File},
+    fs::{read_to_string, remove_dir_all, File},
     io::Write,
     path::Path,
     sync::{Arc, Mutex},
@@ -29,7 +29,7 @@ impl Composer {
         Ok(cp)
     }
 
-    pub async fn install(mut self) -> Result<(), ComposerError> {
+    pub async fn get_lock(mut self) -> Result<ComposerLock, ComposerError> {
         let ctx = Arc::new(Mutex::new(Context::default()));
         let list = self.require.take();
         if let Some(list) = list {
@@ -56,11 +56,15 @@ impl Composer {
                     this.save();
                 }
             }
-
-            let packages = ComposerLock::new(ctx);
-
-            packages.installing().await?;
         }
+
+        Ok(ComposerLock::new(ctx))
+    }
+
+    pub async fn install(self) -> Result<(), ComposerError> {
+        let packages = self.get_lock().await?;
+
+        packages.installing().await?;
 
         Ok(())
     }
@@ -94,14 +98,44 @@ impl Composer {
 
         Ok(())
     }
-    pub fn remove(&mut self, name: &str) -> Result<(), ComposerError> {
+    pub async fn remove(&mut self, name: &str) -> Result<(), ComposerError> {
         let require = self.require.take();
         if let Some(mut list) = require {
             list.remove(name);
             self.require = Some(list);
-
-            // TODO remove vendor content
         }
+
+        let new_lock = self.clone().get_lock().await?;
+        let old_lock = ComposerLock::from_file();
+        let deleteing = old_lock.get_deleteing_packages(&new_lock)?;
+
+        let vendor = Path::new("./vendor");
+        for item in deleteing.iter() {
+            remove_dir_all(vendor.join(item))?;
+        }
+        for item in deleteing.iter() {
+            let path = vendor.join(item);
+            let parent = path.parent().unwrap();
+            if let Ok(res) = has_files(parent) {
+                if res == false {
+                    remove_dir_all(parent)?;
+                }
+            }
+        }
+
+        fn has_files(path: &Path) -> Result<bool, std::io::Error> {
+            for entry in std::fs::read_dir(path)? {
+                let entry = entry?;
+                let file_type = entry.file_type()?;
+                if file_type.is_file() || file_type.is_dir() {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
+
+        new_lock.update_autoload_files()?;
+
         Ok(())
     }
 
