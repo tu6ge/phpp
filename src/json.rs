@@ -29,7 +29,7 @@ impl Composer {
         Ok(cp)
     }
 
-    pub async fn get_lock(mut self) -> Result<ComposerLock, ComposerError> {
+    pub async fn get_lock(&mut self) -> Result<ComposerLock, ComposerError> {
         let ctx = Arc::new(Mutex::new(Context::default()));
         let list = self.require.take();
         if let Some(list) = list {
@@ -62,7 +62,7 @@ impl Composer {
         Ok(ComposerLock::new(ctx))
     }
 
-    pub async fn install(self) -> Result<(), ComposerError> {
+    pub async fn install(&mut self) -> Result<(), ComposerError> {
         let packages = self.get_lock().await?;
 
         packages.installing().await?;
@@ -81,18 +81,19 @@ impl Composer {
         }
     }
 
-    pub fn insert(&mut self, name: &str, version: Option<String>) -> Result<(), ComposerError> {
-        let version = version.unwrap_or("*".to_owned());
+    pub fn insert(&mut self, name: &str, version: &Option<String>) -> Result<(), ComposerError> {
+        let star = String::from("*");
+        let version = version.as_ref().unwrap_or(&star);
 
         self.require = match self.require.take() {
             Some(mut list) => {
-                list.insert(name.to_owned(), version);
+                list.insert(name.to_owned(), version.to_owned());
 
                 Some(list)
             }
             None => {
                 let mut map = HashMap::new();
-                map.insert(name.to_owned(), version);
+                map.insert(name.to_owned(), version.to_owned());
                 Some(map)
             }
         };
@@ -106,7 +107,7 @@ impl Composer {
             self.require = Some(list);
         }
 
-        let new_lock = self.clone().get_lock().await?;
+        let new_lock = self.get_lock().await?;
         let old_lock = ComposerLock::from_file()?;
         let deleteing = old_lock.get_deleteing_packages(&new_lock)?;
 

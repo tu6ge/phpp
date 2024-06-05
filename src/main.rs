@@ -18,7 +18,7 @@ async fn main() -> Result<(), ComposerError> {
 
     match &cli.command {
         Commands::Require { name, version } => {
-            composer.insert(name, version.clone())?;
+            composer.insert(name, version)?;
             composer.save()?;
 
             composer.install().await?;
