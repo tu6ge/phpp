@@ -179,7 +179,7 @@ impl P2 {
         Ok(())
     }
 
-    pub fn semver_check(name: &str, req: &str, version: &str) -> Result<bool, ComposerError> {
+    pub fn semver_check(_name: &str, req: &str, version: &str) -> Result<bool, ComposerError> {
         let mut chars = version.chars();
         let first_char = chars.next();
         let version = if let Some('v') = first_char {
