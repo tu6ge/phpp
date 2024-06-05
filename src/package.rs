@@ -189,6 +189,7 @@ impl P2 {
         } else {
             version
         };
+
         let chars = version.chars();
         let dot_count = chars.filter(|&c| c == '.').count();
         let version = if dot_count == 1 {
@@ -197,9 +198,18 @@ impl P2 {
             version.to_string()
         };
 
+        let mut req_chars = req.chars();
+        let req_first_char = req_chars.next();
+        let req = if let Some('v') = req_first_char {
+            &req[1..]
+        } else if let Some('V') = req_first_char {
+            &req[1..]
+        } else {
+            req
+        };
+
         #[allow(clippy::expect_fun_call)]
-        let version = semver::Version::parse(&version)
-            .expect(&format!("{}[{}] is not a valid version", name, version));
+        let version = semver::Version::parse(&version)?;
         if req.contains("||") {
             let mut parts = Vec::new();
             for item in req.split("||") {
