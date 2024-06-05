@@ -33,8 +33,18 @@ impl Composer {
         let ctx = Arc::new(Mutex::new(Context::default()));
         let list = self.require.take();
         if let Some(list) = list {
-            for (name, _) in list.iter() {
-                let _ = P2::new(name.to_owned(), None, ctx.clone())
+            for (name, version) in list.iter() {
+                let mut c = ctx.lock().unwrap();
+                c.first_package = None;
+                drop(c);
+
+                let version = if version == "*" {
+                    None
+                } else {
+                    Some(version.to_owned())
+                };
+
+                let _ = P2::new(name.to_owned(), version, ctx.clone())
                     .await
                     .expect("download error");
 
@@ -66,17 +76,18 @@ impl Composer {
         }
     }
 
-    pub fn insert(&mut self, name: &str) -> Result<(), ComposerError> {
-        let require = self.require.take();
-        self.require = match require {
+    pub fn insert(&mut self, name: &str, version: Option<String>) -> Result<(), ComposerError> {
+        let version = version.unwrap_or("*".to_owned());
+
+        self.require = match self.require.take() {
             Some(mut list) => {
-                list.insert(name.to_owned(), "*".to_owned());
+                list.insert(name.to_owned(), version);
 
                 Some(list)
             }
             None => {
                 let mut map = HashMap::new();
-                map.insert(name.to_owned(), "*".to_owned());
+                map.insert(name.to_owned(), version);
                 Some(map)
             }
         };

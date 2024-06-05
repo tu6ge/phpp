@@ -16,8 +16,8 @@ async fn main() {
     let mut composer = Composer::new().unwrap();
 
     match &cli.command {
-        Commands::Require { name } => {
-            composer.insert(name).unwrap();
+        Commands::Require { name, version } => {
+            composer.insert(name, version.clone()).unwrap();
             composer.save();
 
             composer.install().await.unwrap();
@@ -44,8 +44,13 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Require { name: String },
+    Require {
+        name: String,
+        version: Option<String>,
+    },
     Install,
     Clear,
-    Remove { name: String },
+    Remove {
+        name: String,
+    },
 }
