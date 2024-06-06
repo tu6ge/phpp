@@ -59,27 +59,40 @@ impl Composer {
                     this.set_version(name, version);
                     this.save()?;
                 }
-                if c.php_version_error.len() > 0 {
-                    for (i, item) in c.php_version_error.iter().enumerate() {
-                        eprintln!(
-                            "{name}({}) -> .. -> {} need php version is {}",
-                            origin_version, item.0, item.1
-                        );
-                        if i > 2 {
-                            break;
-                        }
-                    }
 
-                    // rollback
-                    self.only_remove(name);
-                    self.save()?;
-
-                    return Err(ComposerError::PhpVersion);
-                }
+                Self::eprint_php_version(name, &origin_version, &c.php_version_error)?;
             }
         }
 
         Ok(ComposerLock::new(ctx))
+    }
+
+    /// php version is not satisfy, return failure
+    fn eprint_php_version(
+        name: &str,
+        origin_version: &str,
+        list: &Vec<(String, String)>,
+    ) -> Result<(), ComposerError> {
+        if list.len() > 0 {
+            for (i, item) in list.iter().enumerate() {
+                eprintln!(
+                    "{name}({}) -> .. -> {} need PHP version is {}",
+                    origin_version, item.0, item.1
+                );
+                if i > 2 {
+                    break;
+                }
+            }
+
+            // rollback
+            let mut this = Self::new()?;
+            this.only_remove(name);
+            this.save()?;
+
+            return Err(ComposerError::PhpVersion);
+        }
+
+        Ok(())
     }
 
     pub async fn install(&mut self) -> Result<(), ComposerError> {
