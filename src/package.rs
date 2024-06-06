@@ -103,9 +103,13 @@ impl P2 {
                                 .push((format!("{}({})", name, info.version), version.to_owned()));
                         }
                     } else if matches!(dep_name.find("ext-"), Some(0)) {
-                        // TODO
-                        // require ext-dom * -> it is missing from your system. Install or enable PHP's dom extension.
-                        continue;
+                        let ext = dep_name.replace("ext-", "");
+                        let mut ctx = ctx.lock().unwrap();
+                        let exists = ctx.exists_extension(&ext);
+                        if !exists {
+                            ctx.php_extensions_error
+                                .push((format!("{}({})", name, info.version), ext.to_owned()));
+                        }
                     } else {
                         P2::down_all(dep_name.to_owned(), Some(version.to_owned()), ctx.clone())
                             .await?;
@@ -929,6 +933,7 @@ pub(crate) struct Context {
     pub(crate) php_extensions: Vec<String>,
     pub(crate) php_version: String,
     pub(crate) php_version_error: Vec<(String, String)>,
+    pub(crate) php_extensions_error: Vec<(String, String)>,
 }
 
 impl Context {
@@ -974,6 +979,16 @@ impl Context {
         // 将输出按行分割并存储到 Vec<String> 中
         let extensions: Vec<String> = stdout.lines().map(|s| s.to_string()).collect();
         extensions
+    }
+
+    fn exists_extension(&self, extension: &str) -> bool {
+        for item in self.php_extensions.iter() {
+            if item == extension {
+                return true;
+            }
+        }
+
+        false
     }
 }
 

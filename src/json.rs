@@ -61,6 +61,7 @@ impl Composer {
                 }
 
                 Self::eprint_php_version(name, &origin_version, &c.php_version_error)?;
+                Self::eprint_extensions(name, &origin_version, &c.php_extensions_error)?;
             }
         }
 
@@ -78,6 +79,33 @@ impl Composer {
                 eprintln!(
                     "{name}({}) -> .. -> {} need PHP version is {}",
                     origin_version, item.0, item.1
+                );
+                if i > 2 {
+                    break;
+                }
+            }
+
+            // rollback
+            let mut this = Self::new()?;
+            this.only_remove(name);
+            this.save()?;
+
+            return Err(ComposerError::PhpVersion);
+        }
+
+        Ok(())
+    }
+
+    fn eprint_extensions(
+        name: &str,
+        origin_version: &str,
+        list: &Vec<(String, String)>,
+    ) -> Result<(), ComposerError> {
+        if list.len() > 0 {
+            for (i, item) in list.iter().enumerate() {
+                eprintln!(
+                    "{name}({}) -> .. -> {} need ext-{},it is missing from your system. Install or enable PHP's {} extension.",
+                    origin_version, item.0, item.1,item.1
                 );
                 if i > 2 {
                     break;
