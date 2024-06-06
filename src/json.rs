@@ -30,7 +30,7 @@ impl Composer {
     }
 
     pub async fn get_lock(&mut self) -> Result<ComposerLock, ComposerError> {
-        let ctx = Arc::new(Mutex::new(Context::default()));
+        let ctx = Arc::new(Mutex::new(Context::new()?));
         let list = self.require.take();
         if let Some(list) = list {
             for (name, version) in list.iter() {

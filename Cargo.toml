@@ -20,3 +20,4 @@ sha1 = {version = "^0.10"}
 hex = "0.4.3"
 zip = "2.1.2"
 indexmap = {version = "2.2.6", features = ["serde"]}
+regex = {version = "1.10.4"}

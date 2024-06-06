@@ -18,6 +18,8 @@ pub enum ComposerError {
     Zip(#[from] ZipError),
 
     Semver(#[from] semver::Error),
+
+    GetPhpVersionFailed,
 }
 
 impl Display for ComposerError {

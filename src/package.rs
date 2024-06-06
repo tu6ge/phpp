@@ -5,6 +5,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     pin::Pin,
+    process::Command,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -57,7 +58,7 @@ impl P2 {
             let tree: P2 = serde_json::from_str(&json)
                 .expect(&format!("parse json failed, package: {}", name));
 
-            let version_list = tree.packages.get(&name).expect("abc");
+            let version_list = tree.packages.get(&name).expect("no found package name");
             //.ok_or(ComposerError::NotFoundPackageName(name.to_owned()))?;
 
             let mut info = version_list[0].clone();
@@ -874,6 +875,53 @@ pub(crate) struct Context {
     versions: Vec<Version>,
     hash_set: HashSet<String>,
     pub(crate) first_package: Option<Version>,
+    pub(crate) php_extensions: Vec<String>,
+    pub(crate) php_version: String,
+}
+
+impl Context {
+    pub fn new() -> Result<Self, ComposerError> {
+        Ok(Context {
+            php_version: Self::php_version()?,
+            php_extensions: Self::php_extensions(),
+            ..Default::default()
+        })
+    }
+
+    fn php_version() -> Result<String, ComposerError> {
+        // PHP 8.1.2-1ubuntu2.17 (cli) (built: May  1 2024 10:10:07) (NTS)
+        // PHP 7.4.3 (cli) (built: Feb 18 2020 17:29:57) ( NTS Visual C++ 2017 x64 )
+        let output = Command::new("php")
+            .arg("-v")
+            .output()
+            .map_err(|_| ComposerError::GetPhpVersionFailed)?;
+
+        if output.status.success() {
+            let stdout = std::str::from_utf8(&output.stdout)
+                .map_err(|_| ComposerError::GetPhpVersionFailed)?;
+
+            let re = regex::Regex::new(r"PHP (\d+\.\d+\.\d+)")
+                .map_err(|_| ComposerError::GetPhpVersionFailed)?;
+            if let Some(caps) = re.captures(stdout) {
+                if let Some(version) = caps.get(1) {
+                    return Ok(version.as_str().to_owned());
+                }
+            }
+        }
+
+        Err(ComposerError::GetPhpVersionFailed)
+    }
+
+    fn php_extensions() -> Vec<String> {
+        let output = Command::new("php").arg("-m").output().unwrap();
+
+        // 将输出转换为字符串
+        let stdout = std::str::from_utf8(&output.stdout).unwrap();
+
+        // 将输出按行分割并存储到 Vec<String> 中
+        let extensions: Vec<String> = stdout.lines().map(|s| s.to_string()).collect();
+        extensions
+    }
 }
 
 #[cfg(test)]
@@ -917,4 +965,11 @@ mod tests {
         let version = semver::Version::parse("5.0.8").unwrap();
         assert!(version.pre == Prerelease::EMPTY);
     }
+
+    // #[test]
+    // fn test_php_version() {
+    //     let v = Context::php_version().unwrap();
+
+    //     assert_eq!(v, "8.1.2".to_owned());
+    // }
 }
