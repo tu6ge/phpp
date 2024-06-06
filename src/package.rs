@@ -98,15 +98,10 @@ impl P2 {
                         let mut ctx = ctx.lock().unwrap();
                         let php_version = &ctx.php_version;
 
-                        //println!("php=============== {version}");
-
                         if !Self::semver_check(&name, &version, php_version)? {
-                            //println!("check php version failed");
-
                             ctx.php_version_error
                                 .push((format!("{}({})", name, info.version), version.to_owned()));
                         }
-                        //continue;
                     } else if matches!(dep_name.find("ext-"), Some(0)) {
                         // TODO
                         // require ext-dom * -> it is missing from your system. Install or enable PHP's dom extension.
