@@ -11,3 +11,7 @@ support subcommand :
 - install
 - remove
 - clear
+
+
+## TODO
+1. new package and old dependencies has conflict.
