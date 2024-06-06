@@ -20,6 +20,8 @@ pub enum ComposerError {
     Semver(#[from] semver::Error),
 
     GetPhpVersionFailed,
+
+    PhpVersion,
 }
 
 impl Display for ComposerError {

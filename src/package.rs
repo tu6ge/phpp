@@ -12,7 +12,7 @@ use std::{
 
 use dirs::home_dir;
 use reqwest::header::USER_AGENT;
-use semver::{Prerelease, VersionReq};
+use semver::{Comparator, Prerelease, VersionReq};
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 
@@ -34,8 +34,10 @@ impl P2 {
         ctx: Arc<Mutex<Context>>,
     ) -> Pin<Box<dyn Future<Output = Result<(), ComposerError>> + Send>> {
         Box::pin(async move {
-            if ctx.lock().unwrap().hash_set.get(&name).is_some() {
-                return Ok(());
+            {
+                if ctx.lock().unwrap().hash_set.get(&name).is_some() {
+                    return Ok(());
+                }
             }
 
             let exists = Self::file_exists(&name)?;
@@ -82,8 +84,10 @@ impl P2 {
             }
             info.name = Some(name.to_owned());
 
-            ctx.lock().unwrap().versions.push(info.clone());
-            ctx.lock().unwrap().hash_set.insert(name.to_owned());
+            {
+                ctx.lock().unwrap().versions.push(info.clone());
+                ctx.lock().unwrap().hash_set.insert(name.to_owned());
+            }
 
             println!("  - Locking {}({})", name, info.version);
             let deps = &info.require;
@@ -91,8 +95,18 @@ impl P2 {
                 for (dep_name, version) in deps.iter() {
                     //println!("source: {}, deps: {}, version:{}", name, dep_name, version);
                     if dep_name == "php" {
-                        // TODO
-                        continue;
+                        let mut ctx = ctx.lock().unwrap();
+                        let php_version = &ctx.php_version;
+
+                        //println!("php=============== {version}");
+
+                        if !Self::semver_check(&name, &version, php_version)? {
+                            //println!("check php version failed");
+
+                            ctx.php_version_error
+                                .push((format!("{}({})", name, info.version), version.to_owned()));
+                        }
+                        //continue;
                     } else if matches!(dep_name.find("ext-"), Some(0)) {
                         // TODO
                         // require ext-dom * -> it is missing from your system. Install or enable PHP's dom extension.
@@ -208,6 +222,10 @@ impl P2 {
         } else {
             req
         };
+        let req = req.replace("\\u003E", ">");
+        let req = req.replace("\\u003C", "<");
+
+        //println!("now req: {req}");
 
         #[allow(clippy::expect_fun_call)]
         let version = semver::Version::parse(&version)?;
@@ -241,8 +259,46 @@ impl P2 {
             }
 
             Ok(false)
+        } else if req.contains('-') {
+            let mut parts = Vec::new();
+            for item in req.split('-') {
+                parts.push(item);
+            }
+            debug_assert!(parts.len() == 2);
+            let req = format!(">={}", parts[0].trim());
+            let comp1 = Comparator::parse(&req)?;
+            let req = format!("<={}", parts[1].trim());
+            let comp2 = Comparator::parse(&req)?;
+            let req = VersionReq {
+                comparators: vec![comp1, comp2],
+            };
+
+            if req.matches(&version) {
+                return Ok(true);
+            }
+
+            Ok(false)
+        } else if req.contains('>') && req.contains('<') {
+            let mut parts = Vec::new();
+            for item in req.split(' ') {
+                parts.push(item);
+            }
+            debug_assert!(parts.len() == 2);
+            let req = parts[0].trim();
+            let comp1 = Comparator::parse(&req)?;
+            let req = parts[1].trim();
+            let comp2 = Comparator::parse(&req)?;
+            let req = VersionReq {
+                comparators: vec![comp1, comp2],
+            };
+
+            if req.matches(&version) {
+                return Ok(true);
+            }
+
+            Ok(false)
         } else {
-            let version_req = VersionReq::parse(req)?;
+            let version_req = VersionReq::parse(&req)?;
 
             Ok(version_req.matches(&version))
         }
@@ -877,6 +933,7 @@ pub(crate) struct Context {
     pub(crate) first_package: Option<Version>,
     pub(crate) php_extensions: Vec<String>,
     pub(crate) php_version: String,
+    pub(crate) php_version_error: Vec<(String, String)>,
 }
 
 impl Context {
@@ -889,6 +946,7 @@ impl Context {
     }
 
     fn php_version() -> Result<String, ComposerError> {
+        //return Ok("7.0".to_owned());
         // PHP 8.1.2-1ubuntu2.17 (cli) (built: May  1 2024 10:10:07) (NTS)
         // PHP 7.4.3 (cli) (built: Feb 18 2020 17:29:57) ( NTS Visual C++ 2017 x64 )
         let output = Command::new("php")
@@ -956,6 +1014,8 @@ mod tests {
         assert!(!P2::semver_check("name", "^7.0| ^8.0", "9.2.3").unwrap());
         assert!(!P2::semver_check("name", "^7.0|| ^8.0", "9.2.3").unwrap());
         assert!(P2::semver_check("name", "^7.0| ^8.0", "8.0").unwrap());
+        assert!(P2::semver_check("name", ">=7.4", "8.0").unwrap());
+        assert!(P2::semver_check("name", ">=8.1,", "8.0").unwrap());
         //assert!(P2::semver_check("5.1.0-RC1", "5.1.0-RC1"));
 
         let chars = "1.2.4".chars();

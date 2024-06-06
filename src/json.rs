@@ -17,6 +17,7 @@ use crate::{
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct Composer {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) require: Option<IndexMap<String, String>>,
 }
 
@@ -39,6 +40,8 @@ impl Composer {
                     c.first_package = None;
                 }
 
+                let origin_version = version.clone();
+
                 let version = if version == "*" {
                     None
                 } else {
@@ -55,6 +58,23 @@ impl Composer {
                     let mut this = Self::new()?;
                     this.set_version(name, version);
                     this.save()?;
+                }
+                if c.php_version_error.len() > 0 {
+                    for (i, item) in c.php_version_error.iter().enumerate() {
+                        eprintln!(
+                            "{name}({}) -> .. -> {} need php version is {}",
+                            origin_version, item.0, item.1
+                        );
+                        if i > 2 {
+                            break;
+                        }
+                    }
+
+                    // rollback
+                    self.only_remove(name);
+                    self.save()?;
+
+                    return Err(ComposerError::PhpVersion);
                 }
             }
         }
@@ -101,6 +121,14 @@ impl Composer {
         };
 
         Ok(())
+    }
+
+    fn only_remove(&mut self, name: &str) {
+        let require = self.require.take();
+        if let Some(mut list) = require {
+            list.swap_remove(name);
+            self.require = Some(list);
+        }
     }
     pub async fn remove(&mut self, name: &str) -> Result<(), ComposerError> {
         let require = self.require.take();
