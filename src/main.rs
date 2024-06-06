@@ -16,6 +16,8 @@ async fn main() -> Result<(), ComposerError> {
     let _app = App {};
     let mut composer = Composer::new()?;
 
+    //println!("{:?}", composer);
+
     match &cli.command {
         Commands::Require { name, version } => {
             composer.insert(name, version)?;

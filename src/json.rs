@@ -1,13 +1,13 @@
 //! about composer.json
 
 use std::{
-    collections::HashMap,
     fs::{read_to_string, remove_dir_all, File},
     io::Write,
     path::Path,
     sync::{Arc, Mutex},
 };
 
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -17,7 +17,7 @@ use crate::{
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct Composer {
-    pub(crate) require: Option<HashMap<String, String>>,
+    pub(crate) require: Option<IndexMap<String, String>>,
 }
 
 impl Composer {
@@ -88,12 +88,14 @@ impl Composer {
         self.require = match self.require.take() {
             Some(mut list) => {
                 list.insert(name.to_owned(), version.to_owned());
+                //list.sort_keys();
 
                 Some(list)
             }
             None => {
-                let mut map = HashMap::new();
+                let mut map = IndexMap::new();
                 map.insert(name.to_owned(), version.to_owned());
+                //map.sort_keys();
                 Some(map)
             }
         };
@@ -103,7 +105,7 @@ impl Composer {
     pub async fn remove(&mut self, name: &str) -> Result<(), ComposerError> {
         let require = self.require.take();
         if let Some(mut list) = require {
-            list.remove(name);
+            list.swap_remove(name);
             self.require = Some(list);
         }
 
