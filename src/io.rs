@@ -10,23 +10,28 @@ impl ErrWriter for StderrWriter {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct TestWriter {
-    buffer: Vec<u8>,
-}
+#[cfg(test)]
+pub mod tests {
+    use super::ErrWriter;
 
-impl TestWriter {
-    fn new() -> Self {
-        TestWriter { buffer: Vec::new() }
+    #[derive(Debug, Default)]
+    pub struct TestWriter {
+        buffer: Vec<u8>,
     }
 
-    fn output(&self) -> String {
-        String::from_utf8(self.buffer.clone()).unwrap()
-    }
-}
+    impl TestWriter {
+        pub fn new() -> Self {
+            TestWriter { buffer: Vec::new() }
+        }
 
-impl ErrWriter for TestWriter {
-    fn write(&mut self, s: &str) {
-        self.buffer.extend_from_slice(s.as_bytes());
+        pub fn output(&self) -> String {
+            String::from_utf8(self.buffer.clone()).unwrap()
+        }
+    }
+
+    impl ErrWriter for TestWriter {
+        fn write(&mut self, s: &str) {
+            self.buffer.extend_from_slice(s.as_bytes());
+        }
     }
 }

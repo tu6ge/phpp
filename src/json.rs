@@ -315,7 +315,7 @@ mod tests {
     use httpmock::Method::GET;
     use serde_json::json;
 
-    use crate::io::TestWriter;
+    use crate::io::tests::TestWriter;
 
     use super::*;
 
@@ -353,10 +353,11 @@ mod tests {
             }),
             repositories: Some(get_repositories(server.base_url())),
         };
-        let mut stderr = TestWriter::default();
+        let mut stderr = TestWriter::new();
         let lock = composer.get_lock(&mut stderr).await.unwrap();
         hello_mock.assert();
         let version = &lock.packages[0];
         assert_eq!(version.version, "1.2.3".to_owned());
+        assert!(stderr.output().is_empty())
     }
 }
