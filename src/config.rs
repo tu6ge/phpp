@@ -102,12 +102,12 @@ impl GlobalConfig {
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub(crate) struct Repositories {
-    packagist: Packagist,
+    pub(crate) packagist: Packagist,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
-struct Packagist {
+pub(crate) struct Packagist {
     #[serde(rename = "type")]
-    _type: String,
-    url: String,
+    pub(crate) _type: String,
+    pub(crate) url: String,
 }

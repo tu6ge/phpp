@@ -57,6 +57,17 @@ async fn main() -> Result<(), ComposerError> {
                 }
 
                 config.save()?;
+            } else {
+                if !unset {
+                    if let Some(value1) = value1 {
+                        composer.set(key, value1, value2)?;
+                    } else {
+                        panic!("setting value is not empty");
+                    }
+                } else {
+                    composer.unset(key)?;
+                }
+                composer.save()?;
             }
         }
     }

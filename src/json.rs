@@ -11,6 +11,7 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    config::{Packagist, Repositories},
     error::ComposerError,
     package::{ComposerLock, Context, P2},
 };
@@ -19,6 +20,9 @@ use crate::{
 pub(crate) struct Composer {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) require: Option<IndexMap<String, String>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    repositories: Option<Repositories>,
 }
 
 impl Composer {
@@ -218,6 +222,57 @@ impl Composer {
         let mut f = File::create(path)?;
         let content = serde_json::to_string_pretty(&self)?;
         f.write_all(content.as_bytes())?;
+
+        Ok(())
+    }
+
+    pub fn set(
+        &mut self,
+        key: &str,
+        value1: &str,
+        value2: &Option<String>,
+    ) -> Result<(), ComposerError> {
+        match key {
+            "repo.packagist" => {
+                if let Some(value2) = value2 {
+                    self.set_repo(value1, value2)?;
+                }
+            }
+            _ => todo!(),
+        }
+
+        Ok(())
+    }
+    pub fn unset(&mut self, key: &str) -> Result<(), ComposerError> {
+        match key {
+            "repo.packagist" => {
+                self.repositories = None;
+            }
+            _ => todo!(),
+        }
+
+        Ok(())
+    }
+
+    fn set_repo(&mut self, value1: &str, value2: &str) -> Result<(), ComposerError> {
+        let repo = self.repositories.take();
+
+        self.repositories = match repo {
+            Some(mut repo) => {
+                repo.packagist._type = value1.to_owned();
+                repo.packagist.url = value2.to_owned();
+                Some(repo)
+            }
+            None => {
+                let repo = Repositories {
+                    packagist: Packagist {
+                        _type: value1.to_owned(),
+                        url: value2.to_owned(),
+                    },
+                };
+                Some(repo)
+            }
+        };
 
         Ok(())
     }
