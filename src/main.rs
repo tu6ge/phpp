@@ -46,27 +46,10 @@ async fn main() -> Result<(), ComposerError> {
         } => {
             if *global {
                 let mut config = GlobalConfig::new().unwrap();
-                if !unset {
-                    if let Some(value1) = value1 {
-                        config.set(key, value1, value2)?;
-                    } else {
-                        panic!("setting value is not empty");
-                    }
-                } else {
-                    config.unset(key)?;
-                }
-
+                config.set(*unset, key, value1, value2)?;
                 config.save()?;
             } else {
-                if !unset {
-                    if let Some(value1) = value1 {
-                        composer.set(key, value1, value2)?;
-                    } else {
-                        panic!("setting value is not empty");
-                    }
-                } else {
-                    composer.unset(key)?;
-                }
+                composer.set(*unset, key, value1, value2)?;
                 composer.save()?;
             }
         }

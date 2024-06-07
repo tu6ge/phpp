@@ -36,25 +36,20 @@ impl GlobalConfig {
 
     pub fn set(
         &mut self,
+        unset: bool,
         key: &str,
-        value1: &str,
+        value1: &Option<String>,
         value2: &Option<String>,
     ) -> Result<(), ComposerError> {
         match key {
             "repo.packagist" => {
-                if let Some(value2) = value2 {
-                    self.set_repo(value1, value2)?;
+                if !unset {
+                    if let (Some(value1), Some(value2)) = (value1, value2) {
+                        self.set_repo(value1, value2)?;
+                    }
+                } else {
+                    self.repositories = None;
                 }
-            }
-            _ => todo!(),
-        }
-
-        Ok(())
-    }
-    pub fn unset(&mut self, key: &str) -> Result<(), ComposerError> {
-        match key {
-            "repo.packagist" => {
-                self.repositories = None;
             }
             _ => todo!(),
         }
