@@ -7,6 +7,9 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+#[cfg(test)]
+use httpmock::MockServer;
+
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
@@ -17,6 +20,7 @@ use crate::{
 };
 
 const PACKAGE_URL: &str = "https://repo.packagist.org/";
+const HTTP_MOCK: &str = "127.0.0.1:3000";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct Composer {
@@ -39,6 +43,7 @@ impl Composer {
     pub async fn get_lock(&mut self) -> Result<ComposerLock, ComposerError> {
         let p2_url = self.get_package_url()?;
         let mut context = Context::new()?;
+
         context.p2_url = p2_url;
 
         let ctx = Arc::new(Mutex::new(context));
@@ -290,8 +295,56 @@ impl Composer {
             }
         }
 
-        url.push_str("p2/");
+        url.push_str("/p2/");
 
         Ok(url)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use httpmock::Method::GET;
+    use serde_json::json;
+
+    use super::*;
+
+    fn get_repositories(url: String) -> Repositories {
+        Repositories {
+            packagist: Packagist {
+                _type: "composer".to_owned(),
+                url,
+            },
+        }
+    }
+
+    #[tokio::test]
+    async fn get_lock() {
+        let server = MockServer::start();
+
+        let hello_mock = server.mock(|when, then| {
+            when.method(GET).path("/p2/foo/bar.json");
+            then.status(200).json_body(json!({
+                "packages" : {
+                    "foo/bar" : [{
+                        "name" : "foo/bar",
+                        "version" : "1.2.3",
+                        "version_normalized": "1.2.3.0",
+                    }]
+                }
+            }));
+        });
+
+        let mut composer = Composer {
+            require: Some({
+                let mut map = IndexMap::new();
+                map.insert("foo/bar".to_owned(), "1.2.3".to_owned());
+                map
+            }),
+            repositories: Some(get_repositories(server.base_url())),
+        };
+        let lock = composer.get_lock().await.unwrap();
+        hello_mock.assert();
+        let version = &lock.packages[0];
+        assert_eq!(version.version, "1.2.3".to_owned());
     }
 }

@@ -324,7 +324,7 @@ impl P2 {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ComposerLock {
-    packages: Vec<Version>,
+    pub packages: Vec<Version>,
 }
 
 impl ComposerLock {
