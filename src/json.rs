@@ -11,10 +11,12 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    config::{Packagist, Repositories},
+    config::{GlobalConfig, Packagist, Repositories},
     error::ComposerError,
     package::{ComposerLock, Context, P2},
 };
+
+const PACKAGE_URL: &str = "https://repo.packagist.org/";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct Composer {
@@ -35,7 +37,11 @@ impl Composer {
     }
 
     pub async fn get_lock(&mut self) -> Result<ComposerLock, ComposerError> {
-        let ctx = Arc::new(Mutex::new(Context::new()?));
+        let p2_url = self.get_package_url()?;
+        let mut context = Context::new()?;
+        context.p2_url = p2_url;
+
+        let ctx = Arc::new(Mutex::new(context));
         let list = self.require.take();
         if let Some(list) = list {
             for (name, version) in list.iter() {
@@ -275,5 +281,22 @@ impl Composer {
         };
 
         Ok(())
+    }
+
+    pub fn get_package_url(&self) -> Result<String, ComposerError> {
+        // PACKAGE_URL
+        let mut url = String::from(PACKAGE_URL);
+        if let Some(repositories) = &self.repositories {
+            url = repositories.packagist.url.to_owned();
+        } else {
+            let config = GlobalConfig::new()?;
+            if let Some(repositories) = config.repositories {
+                url = repositories.packagist.url.to_owned();
+            }
+        }
+
+        url.push_str("p2/");
+
+        Ok(url)
     }
 }

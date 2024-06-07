@@ -13,7 +13,7 @@ const CONFIG_DIR: &str = ".config/phpp";
 #[derive(Debug, Deserialize, Clone, Serialize, Default)]
 pub struct GlobalConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
-    repositories: Option<Repositories>,
+    pub repositories: Option<Repositories>,
 }
 
 impl GlobalConfig {

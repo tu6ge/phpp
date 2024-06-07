@@ -18,7 +18,6 @@ use tokio::time::sleep;
 
 use crate::error::ComposerError;
 
-const PACKAGE_URL: &str = "https://repo.packagist.org/p2/";
 const CACHE_DIR: &str = ".cache/phpp";
 const MY_USER_AGENT: &str = "tu6ge/phpp";
 
@@ -40,20 +39,24 @@ impl P2 {
                 }
             }
 
-            let exists = Self::file_exists(&name)?;
-            let json = if exists {
-                Self::read_file(&name)?
-            } else {
-                sleep(Duration::from_millis(200)).await;
+            let json = {
+                let url = ctx.lock().unwrap().p2_url.clone();
 
-                let json = match Self::down(&name).await {
-                    Ok(json) => json,
-                    Err(ComposerError::NotFoundPackage(_)) => return Ok(()),
-                    Err(e) => return Err(e),
-                };
+                let exists = Self::file_exists(&name, &url)?;
+                if exists {
+                    Self::read_file(&name, &url)?
+                } else {
+                    sleep(Duration::from_millis(200)).await;
 
-                Self::save(&name, &json)?;
-                json
+                    let json = match Self::down(&name, &url).await {
+                        Ok(json) => json,
+                        Err(ComposerError::NotFoundPackage(_)) => return Ok(()),
+                        Err(e) => return Err(e),
+                    };
+
+                    Self::save(&name, &json, &url)?;
+                    json
+                }
             };
 
             #[allow(clippy::expect_fun_call)]
@@ -121,12 +124,16 @@ impl P2 {
         })
     }
 
-    pub async fn down(name: &str) -> Result<String, ComposerError> {
-        let mut url = String::from(PACKAGE_URL);
+    pub async fn down(name: &str, p2_url: &str) -> Result<String, ComposerError> {
+        let mut url = String::from(p2_url);
         url.push_str(name);
         url.push_str(".json");
 
-        let response = reqwest::Client::new().get(url).send().await?;
+        let response = reqwest::Client::new()
+            .get(url)
+            .header(USER_AGENT, MY_USER_AGENT)
+            .send()
+            .await?;
 
         if !response.status().is_success() {
             return Err(ComposerError::NotFoundPackage(name.to_owned()));
@@ -137,11 +144,15 @@ impl P2 {
         Ok(json)
     }
 
-    pub fn file_exists(name: &str) -> Result<bool, ComposerError> {
+    pub fn file_exists(name: &str, p2_url: &str) -> Result<bool, ComposerError> {
         let cache_dir = home_dir()
             .ok_or(ComposerError::NotFoundHomeDir)?
             .join(CACHE_DIR);
         let repo_dir = cache_dir.join("repo");
+        let p2_url = String::from(p2_url).replace(":", "-");
+        let p2_url = p2_url.replace("/", "-");
+        let repo_dir = repo_dir.join(p2_url);
+        create_dir_all(&repo_dir)?;
 
         let name_dir = name.replace('/', "-");
         let filename = format!("provider-{}.json", name_dir);
@@ -150,11 +161,14 @@ impl P2 {
         Ok(final_path.exists())
     }
 
-    pub fn save(name: &str, content: &str) -> Result<(), ComposerError> {
+    pub fn save(name: &str, content: &str, p2_url: &str) -> Result<(), ComposerError> {
         let cache_dir = home_dir()
             .ok_or(ComposerError::NotFoundHomeDir)?
             .join(CACHE_DIR);
         let repo_dir = cache_dir.join("repo");
+        let p2_url = String::from(p2_url).replace(":", "-");
+        let p2_url = p2_url.replace("/", "-");
+        let repo_dir = repo_dir.join(p2_url);
         create_dir_all(&repo_dir)?;
 
         let name_dir = name.replace('/', "-");
@@ -166,11 +180,15 @@ impl P2 {
 
         Ok(())
     }
-    pub fn read_file(name: &str) -> Result<String, ComposerError> {
+    pub fn read_file(name: &str, p2_url: &str) -> Result<String, ComposerError> {
         let cache_dir = home_dir()
             .ok_or(ComposerError::NotFoundHomeDir)?
             .join(CACHE_DIR);
         let repo_dir = cache_dir.join("repo");
+        let p2_url = String::from(p2_url).replace(":", "-");
+        let p2_url = p2_url.replace("/", "-");
+        let repo_dir = repo_dir.join(p2_url);
+        create_dir_all(&repo_dir)?;
 
         let name_dir = name.replace('/', "-");
         let filename = format!("provider-{}.json", name_dir);
@@ -934,6 +952,7 @@ pub(crate) struct Context {
     pub(crate) php_version: String,
     pub(crate) php_version_error: Vec<(String, String)>,
     pub(crate) php_extensions_error: Vec<(String, String)>,
+    pub p2_url: String,
 }
 
 impl Context {
@@ -998,7 +1017,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_deser() {
-        let mut url = String::from(PACKAGE_URL);
+        let mut url = String::from("");
         let name = "guzzlehttp/guzzle";
         url.push_str(name);
         url.push_str(".json");
