@@ -20,7 +20,6 @@ use crate::{
 };
 
 const PACKAGE_URL: &str = "https://repo.packagist.org/";
-const HTTP_MOCK: &str = "127.0.0.1:3000";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct Composer {
