@@ -1,8 +1,6 @@
-# php composer by rust, 
+# phpp is composer replacement， writed with rust
 
-now , it named phpp
-
-*developing! Dont used producting*
+*developing! Dont used production*
 
 
 support subcommand :
