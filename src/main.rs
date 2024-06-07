@@ -1,13 +1,13 @@
-use app::App;
 use clap::{Parser, Subcommand};
 use config::GlobalConfig;
 use error::ComposerError;
+use io::StderrWriter;
 use json::Composer;
 use package::P2;
 
-mod app;
 mod config;
 mod error;
+mod io;
 mod json;
 mod package;
 
@@ -15,8 +15,8 @@ mod package;
 async fn main() -> Result<(), ComposerError> {
     let cli = Cli::parse();
 
-    let _app = App {};
     let mut composer = Composer::new()?;
+    let mut std_err = StderrWriter {};
 
     //println!("{:?}", composer);
 
@@ -25,16 +25,16 @@ async fn main() -> Result<(), ComposerError> {
             composer.insert(name, version)?;
             composer.save()?;
 
-            composer.install().await?;
+            composer.install(&mut std_err).await?;
         }
         Commands::Install => {
-            composer.install().await?;
+            composer.install(&mut std_err).await?;
         }
         Commands::Clear => {
             P2::clear().expect("clear dir failed");
         }
         Commands::Remove { name } => {
-            composer.remove(name).await?;
+            composer.remove(name, &mut std_err).await?;
             composer.save()?;
         }
         Commands::Config {

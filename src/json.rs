@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     config::{GlobalConfig, Packagist, Repositories},
     error::ComposerError,
+    io::ErrWriter,
     package::{ComposerLock, Context, P2},
 };
 
@@ -39,7 +40,10 @@ impl Composer {
         Ok(cp)
     }
 
-    pub async fn get_lock(&mut self) -> Result<ComposerLock, ComposerError> {
+    pub async fn get_lock(
+        &mut self,
+        stderr: &mut dyn ErrWriter,
+    ) -> Result<ComposerLock, ComposerError> {
         let p2_url = self.get_package_url()?;
         let mut context = Context::new()?;
 
@@ -74,8 +78,8 @@ impl Composer {
                     this.save()?;
                 }
 
-                Self::eprint_php_version(name, &origin_version, &c.php_version_error)?;
-                Self::eprint_extensions(name, &origin_version, &c.php_extensions_error)?;
+                Self::eprint_php_version(name, &origin_version, &c.php_version_error, stderr)?;
+                Self::eprint_extensions(name, &origin_version, &c.php_extensions_error, stderr)?;
             }
         }
 
@@ -87,13 +91,14 @@ impl Composer {
         name: &str,
         origin_version: &str,
         list: &Vec<(String, String)>,
+        stderr: &mut dyn ErrWriter,
     ) -> Result<(), ComposerError> {
         if list.len() > 0 {
             for (i, item) in list.iter().enumerate() {
-                eprintln!(
+                stderr.write(&format!(
                     "{name}({}) -> .. -> {} need PHP version is {}",
                     origin_version, item.0, item.1
-                );
+                ));
                 if i > 2 {
                     break;
                 }
@@ -114,13 +119,14 @@ impl Composer {
         name: &str,
         origin_version: &str,
         list: &Vec<(String, String)>,
+        stderr: &mut dyn ErrWriter,
     ) -> Result<(), ComposerError> {
         if list.len() > 0 {
             for (i, item) in list.iter().enumerate() {
-                eprintln!(
+                stderr.write(&format!(
                     "{name}({}) -> .. -> {} need ext-{},it is missing from your system. Install or enable PHP's {} extension.",
                     origin_version, item.0, item.1,item.1
-                );
+                ));
                 if i > 2 {
                     break;
                 }
@@ -137,8 +143,8 @@ impl Composer {
         Ok(())
     }
 
-    pub async fn install(&mut self) -> Result<(), ComposerError> {
-        let packages = self.get_lock().await?;
+    pub async fn install(&mut self, stderr: &mut dyn ErrWriter) -> Result<(), ComposerError> {
+        let packages = self.get_lock(stderr).await?;
 
         packages.installing().await?;
 
@@ -185,14 +191,18 @@ impl Composer {
             self.require = Some(list);
         }
     }
-    pub async fn remove(&mut self, name: &str) -> Result<(), ComposerError> {
+    pub async fn remove(
+        &mut self,
+        name: &str,
+        stderr: &mut dyn ErrWriter,
+    ) -> Result<(), ComposerError> {
         let require = self.require.take();
         if let Some(mut list) = require {
             list.swap_remove(name);
             self.require = Some(list);
         }
 
-        let new_lock = self.get_lock().await?;
+        let new_lock = self.get_lock(stderr).await?;
         let old_lock = ComposerLock::from_file()?;
         let deleteing = old_lock.get_deleteing_packages(&new_lock)?;
 
@@ -305,6 +315,8 @@ mod tests {
     use httpmock::Method::GET;
     use serde_json::json;
 
+    use crate::io::TestWriter;
+
     use super::*;
 
     fn get_repositories(url: String) -> Repositories {
@@ -341,7 +353,8 @@ mod tests {
             }),
             repositories: Some(get_repositories(server.base_url())),
         };
-        let lock = composer.get_lock().await.unwrap();
+        let mut stderr = TestWriter::default();
+        let lock = composer.get_lock(&mut stderr).await.unwrap();
         hello_mock.assert();
         let version = &lock.packages[0];
         assert_eq!(version.version, "1.2.3".to_owned());
