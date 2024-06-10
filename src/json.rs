@@ -7,9 +7,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-#[cfg(test)]
-use httpmock::MockServer;
-
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
@@ -19,6 +16,9 @@ use crate::{
     io::ErrWriter,
     package::{ComposerLock, Context, P2},
 };
+
+#[cfg(test)]
+mod tests;
 
 const PACKAGE_URL: &str = "https://repo.packagist.org/";
 
@@ -307,57 +307,5 @@ impl Composer {
         url.push_str("/p2/");
 
         Ok(url)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use httpmock::Method::GET;
-    use serde_json::json;
-
-    use crate::io::tests::TestWriter;
-
-    use super::*;
-
-    fn get_repositories(url: String) -> Repositories {
-        Repositories {
-            packagist: Packagist {
-                _type: "composer".to_owned(),
-                url,
-            },
-        }
-    }
-
-    #[tokio::test]
-    async fn get_lock() {
-        let server = MockServer::start();
-
-        let hello_mock = server.mock(|when, then| {
-            when.method(GET).path("/p2/foo/bar.json");
-            then.status(200).json_body(json!({
-                "packages" : {
-                    "foo/bar" : [{
-                        "name" : "foo/bar",
-                        "version" : "1.2.3",
-                        "version_normalized": "1.2.3.0",
-                    }]
-                }
-            }));
-        });
-
-        let mut composer = Composer {
-            require: Some({
-                let mut map = IndexMap::new();
-                map.insert("foo/bar".to_owned(), "1.2.3".to_owned());
-                map
-            }),
-            repositories: Some(get_repositories(server.base_url())),
-        };
-        let mut stderr = TestWriter::new();
-        let lock = composer.get_lock(&mut stderr).await.unwrap();
-        hello_mock.assert();
-        let version = &lock.packages[0];
-        assert_eq!(version.version, "1.2.3".to_owned());
-        assert!(stderr.output().is_empty())
     }
 }
