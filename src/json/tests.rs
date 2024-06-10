@@ -149,3 +149,76 @@ async fn last_stable() {
     assert_eq!(version.version, "1.2.3".to_owned());
     assert!(stderr.output().is_empty())
 }
+
+#[tokio::test]
+async fn php_version() {
+    let server = MockServer::start();
+
+    let hello_mock = server.mock(|when, then| {
+        when.method(GET).path("/p2/foo/bar.json");
+        then.status(200).json_body(json!({
+            "packages" : {
+                "foo/bar" : [{
+                    "name" : "foo/bar",
+                    "version" : "1.2.3",
+                    "version_normalized": "1.2.3.0",
+                    "require":{
+                      "php": ">=8.3.0",
+                    }
+                },{
+                    "name" : "foo/bar",
+                    "version" : "1.1.0",
+                    "version_normalized": "1.1.0.0",
+                    "require":{
+                      "php": ">=8.0.0",
+                    }
+                }]
+            }
+        }));
+    });
+
+    let mut composer = Composer {
+        require: Some({
+            let mut map = IndexMap::new();
+            map.insert("foo/bar".to_owned(), "*".to_owned());
+            map
+        }),
+        repositories: Some(get_repositories(server.base_url())),
+    };
+    let mut stderr = TestWriter::new();
+    let p2_url = composer.get_package_url().unwrap();
+    let mut context = Context::new().unwrap();
+    context.p2_url = p2_url;
+    context.php_version = "8.2.0".to_owned();
+    let ctx = Arc::new(Mutex::new(context));
+
+    let error = composer.get_lock(&mut stderr, ctx).await.unwrap_err();
+    assert!(matches!(error, ComposerError::PhpVersion));
+    hello_mock.assert();
+
+    assert_eq!(
+        stderr.output(),
+        "foo/bar(*) -> .. -> foo/bar(1.2.3) need PHP version is >=8.3.0"
+    );
+
+    // let mut composer = Composer {
+    //     require: Some({
+    //         let mut map = IndexMap::new();
+    //         map.insert("foo/bar".to_owned(), "1.1.0".to_owned());
+    //         map
+    //     }),
+    //     repositories: Some(get_repositories(server.base_url())),
+    // };
+    // let mut stderr = TestWriter::new();
+    // let p2_url = composer.get_package_url().unwrap();
+    // let mut context = Context::new().unwrap();
+    // context.p2_url = p2_url;
+    // context.php_version = "8.2.0".to_owned();
+    // let ctx = Arc::new(Mutex::new(context));
+
+    // let _ = composer.get_lock(&mut stderr, ctx).await.unwrap();
+
+    // hello_mock.assert();
+
+    // assert!(stderr.output().is_empty());
+}
