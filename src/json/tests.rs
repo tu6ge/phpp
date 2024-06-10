@@ -14,6 +14,12 @@ fn get_repositories(url: String) -> Repositories {
         },
     }
 }
+fn default_context(composer: &Composer) -> Arc<Mutex<Context>> {
+    let p2_url = composer.get_package_url().unwrap();
+    let mut context = Context::new().unwrap();
+    context.p2_url = p2_url;
+    Arc::new(Mutex::new(context))
+}
 
 #[tokio::test]
 async fn simple() {
@@ -41,7 +47,9 @@ async fn simple() {
         repositories: Some(get_repositories(server.base_url())),
     };
     let mut stderr = TestWriter::new();
-    let lock = composer.get_lock(&mut stderr).await.unwrap();
+    let ctx = default_context(&composer);
+
+    let lock = composer.get_lock(&mut stderr, ctx).await.unwrap();
     hello_mock.assert();
     let version = &lock.packages[0];
     assert_eq!(version.version, "1.2.3".to_owned());
@@ -89,7 +97,9 @@ async fn one_depend() {
         repositories: Some(get_repositories(server.base_url())),
     };
     let mut stderr = TestWriter::new();
-    let lock = composer.get_lock(&mut stderr).await.unwrap();
+    let ctx = default_context(&composer);
+
+    let lock = composer.get_lock(&mut stderr, ctx).await.unwrap();
     bar.assert();
     bar2.assert();
     let version = &lock.packages[0];
@@ -131,7 +141,9 @@ async fn last_stable() {
         repositories: Some(get_repositories(server.base_url())),
     };
     let mut stderr = TestWriter::new();
-    let lock = composer.get_lock(&mut stderr).await.unwrap();
+    let ctx = default_context(&composer);
+
+    let lock = composer.get_lock(&mut stderr, ctx).await.unwrap();
     hello_mock.assert();
     let version = &lock.packages[0];
     assert_eq!(version.version, "1.2.3".to_owned());

@@ -43,13 +43,8 @@ impl Composer {
     pub async fn get_lock(
         &mut self,
         stderr: &mut dyn ErrWriter,
+        ctx: Arc<Mutex<Context>>,
     ) -> Result<ComposerLock, ComposerError> {
-        let p2_url = self.get_package_url()?;
-        let mut context = Context::new()?;
-
-        context.p2_url = p2_url;
-
-        let ctx = Arc::new(Mutex::new(context));
         let list = self.require.take();
         if let Some(list) = list {
             for (name, version) in list.iter() {
@@ -144,7 +139,13 @@ impl Composer {
     }
 
     pub async fn install(&mut self, stderr: &mut dyn ErrWriter) -> Result<(), ComposerError> {
-        let packages = self.get_lock(stderr).await?;
+        let p2_url = self.get_package_url()?;
+        let mut context = Context::new()?;
+
+        context.p2_url = p2_url;
+
+        let ctx = Arc::new(Mutex::new(context));
+        let packages = self.get_lock(stderr, ctx).await?;
 
         packages.installing().await?;
 
@@ -196,13 +197,20 @@ impl Composer {
         name: &str,
         stderr: &mut dyn ErrWriter,
     ) -> Result<(), ComposerError> {
+        let p2_url = self.get_package_url()?;
+        let mut context = Context::new()?;
+
+        context.p2_url = p2_url;
+
+        let ctx = Arc::new(Mutex::new(context));
+
         let require = self.require.take();
         if let Some(mut list) = require {
             list.swap_remove(name);
             self.require = Some(list);
         }
 
-        let new_lock = self.get_lock(stderr).await?;
+        let new_lock = self.get_lock(stderr, ctx).await?;
         let old_lock = ComposerLock::from_file()?;
         let deleteing = old_lock.get_deleteing_packages(&new_lock)?;
 
