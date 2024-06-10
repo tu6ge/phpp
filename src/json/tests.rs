@@ -222,3 +222,48 @@ async fn php_version() {
 
     // assert!(stderr.output().is_empty());
 }
+
+#[tokio::test]
+async fn php_extensions() {
+    let server = MockServer::start();
+
+    let hello_mock = server.mock(|when, then| {
+        when.method(GET).path("/p2/foo/bar.json");
+        then.status(200).json_body(json!({
+            "packages" : {
+                "foo/bar" : [{
+                    "name" : "foo/bar",
+                    "version" : "1.2.3",
+                    "version_normalized": "1.2.3.0",
+                    "require":{
+                      "ext-dom": "*",
+                    }
+                },]
+            }
+        }));
+    });
+
+    let mut composer = Composer {
+        require: Some({
+            let mut map = IndexMap::new();
+            map.insert("foo/bar".to_owned(), "*".to_owned());
+            map
+        }),
+        repositories: Some(get_repositories(server.base_url())),
+    };
+    let mut stderr = TestWriter::new();
+    let p2_url = composer.get_package_url().unwrap();
+    let mut context = Context::new().unwrap();
+    context.p2_url = p2_url;
+    context.php_extensions = vec![];
+    let ctx = Arc::new(Mutex::new(context));
+
+    let error = composer.get_lock(&mut stderr, ctx).await.unwrap_err();
+    assert!(matches!(error, ComposerError::PhpVersion));
+    hello_mock.assert();
+
+    assert_eq!(
+        stderr.output(),
+        "foo/bar(*) -> .. -> foo/bar(1.2.3) need ext-dom,it is missing from your system. Install or enable PHP's dom extension."
+    );
+}
