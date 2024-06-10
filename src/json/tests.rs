@@ -102,6 +102,7 @@ async fn one_depend() {
     let lock = composer.get_lock(&mut stderr, ctx).await.unwrap();
     bar.assert();
     bar2.assert();
+    assert_eq!(lock.packages.len(), 2);
     let version = &lock.packages[0];
     assert_eq!(version.version, "1.2.3".to_owned());
 
@@ -266,4 +267,44 @@ async fn php_extensions() {
         stderr.output(),
         "foo/bar(*) -> .. -> foo/bar(1.2.3) need ext-dom,it is missing from your system. Install or enable PHP's dom extension."
     );
+}
+
+#[tokio::test]
+async fn auto_choise_version() {
+    let server = MockServer::start();
+
+    let hello_mock = server.mock(|when, then| {
+        when.method(GET).path("/p2/foo/bar.json");
+        then.status(200).json_body(json!({
+            "packages" : {
+                "foo/bar" : [{
+                    "name" : "foo/bar",
+                    "version" : "2.2.3",
+                    "version_normalized": "2.2.3.0",
+                },{
+                    "name" : "foo/bar",
+                    "version" : "1.2.3",
+                    "version_normalized": "1.2.3.0",
+                }]
+            }
+        }));
+    });
+
+    let mut composer = Composer {
+        require: Some({
+            let mut map = IndexMap::new();
+            map.insert("foo/bar".to_owned(), "^1".to_owned());
+            map
+        }),
+        repositories: Some(get_repositories(server.base_url())),
+    };
+    let mut stderr = TestWriter::new();
+    let ctx = default_context(&composer);
+
+    let lock = composer.get_lock(&mut stderr, ctx).await.unwrap();
+    hello_mock.assert();
+    assert_eq!(lock.packages.len(), 1);
+    let version = &lock.packages[0];
+    assert_eq!(version.version, "1.2.3".to_owned());
+    assert!(stderr.output().is_empty())
 }
