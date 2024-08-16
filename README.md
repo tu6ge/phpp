@@ -1,4 +1,4 @@
-# phpp is composer replacement， writed with rust
+# phpp is composer replacement， writed by rust
 
 *developing! Dont used production*
 
@@ -9,6 +9,7 @@ support subcommand :
 - install
 - remove
 - clear
+- config set repo
 
 
 ## TODO
