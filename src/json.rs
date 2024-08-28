@@ -149,7 +149,11 @@ impl Composer {
         Ok(())
     }
 
-    pub async fn install(&mut self, stderr: &mut dyn ErrWriter) -> Result<(), ComposerError> {
+    pub async fn install(
+        &mut self,
+        name: &str,
+        stderr: &mut dyn ErrWriter,
+    ) -> Result<(), ComposerError> {
         let p2_url = self.get_package_url()?;
         let mut context = Context::new()?;
 
@@ -159,6 +163,13 @@ impl Composer {
         let packages = self.get_lock(stderr, ctx).await?;
 
         packages.installing().await?;
+
+        if !name.is_empty() {
+            if let Some(version) = packages.find_version(name) {
+                self.set_version(name, &version.version);
+                self.save()?;
+            }
+        }
 
         Ok(())
     }

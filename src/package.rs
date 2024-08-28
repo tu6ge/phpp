@@ -836,6 +836,17 @@ return array(
 
         Ok(())
     }
+
+    pub fn find_version(&self, name: &str) -> Option<&Version> {
+        for item in self.packages.iter() {
+            if let Some(ref n) = item.name {
+                if n == name {
+                    return Some(item);
+                }
+            }
+        }
+        None
+    }
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize)]

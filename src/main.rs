@@ -25,10 +25,10 @@ async fn main() -> Result<(), ComposerError> {
             composer.insert(name, version)?;
             composer.save()?;
 
-            composer.install(&mut std_err).await?;
+            composer.install(&name, &mut std_err).await?;
         }
         Commands::Install => {
-            composer.install(&mut std_err).await?;
+            composer.install("", &mut std_err).await?;
         }
         Commands::Clear => {
             P2::clear().expect("clear dir failed");
