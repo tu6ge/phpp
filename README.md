@@ -1,9 +1,9 @@
 # phpp is composer replacement， writed by rust
 
-*developing! Dont used production*
+*Developing! Dont used production*
 
 
-support subcommand :
+Support subcommand :
 
 - require
 - install
@@ -12,5 +12,13 @@ support subcommand :
 - config set repo
 
 
-## TODO
-1. new package and old dependencies has conflict.
+## Usage
+1. clone the repository
+```
+git clone git@github.com:tu6ge/phpp.git
+```
+
+2. Run composer command (install package)
+```
+cargo run require guzzlehttp/guzzle
+```
