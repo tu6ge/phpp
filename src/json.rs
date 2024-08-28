@@ -53,12 +53,11 @@ impl Composer {
     }
 
     pub async fn get_lock(
-        &mut self,
+        &self,
         stderr: &mut dyn ErrWriter,
         ctx: Arc<Mutex<Context>>,
     ) -> Result<ComposerLock, ComposerError> {
-        let list = self.require.take();
-        if let Some(list) = list {
+        if let Some(ref list) = self.require {
             for (name, version) in list.iter() {
                 {
                     let mut c = ctx.lock().unwrap();

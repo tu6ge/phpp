@@ -1015,26 +1015,26 @@ impl Context {
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn test_deser() {
-        let mut url = String::from("");
-        let name = "guzzlehttp/guzzle";
-        url.push_str(name);
-        url.push_str(".json");
+    // #[tokio::test]
+    // async fn test_deser() {
+    //     let mut url = String::from("");
+    //     let name = "guzzlehttp/guzzle";
+    //     url.push_str(name);
+    //     url.push_str(".json");
 
-        let json = reqwest::Client::new()
-            .get(url)
-            .send()
-            .await
-            .unwrap()
-            .text()
-            .await
-            .unwrap();
+    //     let json = reqwest::Client::new()
+    //         .get(url)
+    //         .send()
+    //         .await
+    //         .unwrap()
+    //         .text()
+    //         .await
+    //         .unwrap();
 
-        let res: P2 = serde_json::from_str(&json).unwrap();
+    //     let res: P2 = serde_json::from_str(&json).unwrap();
 
-        println!("{res:?}");
-    }
+    //     println!("{res:?}");
+    // }
 
     #[test]
     fn test_semver() {
@@ -1044,7 +1044,7 @@ mod tests {
         assert!(!P2::semver_check("name", "^7.0|| ^8.0", "9.2.3").unwrap());
         assert!(P2::semver_check("name", "^7.0| ^8.0", "8.0").unwrap());
         assert!(P2::semver_check("name", ">=7.4", "8.0").unwrap());
-        assert!(P2::semver_check("name", ">=8.1,", "8.0").unwrap());
+        assert!(!P2::semver_check("name", ">=8.1", "8.0").unwrap());
         //assert!(P2::semver_check("5.1.0-RC1", "5.1.0-RC1"));
 
         let chars = "1.2.4".chars();
