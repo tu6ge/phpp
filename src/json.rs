@@ -35,17 +35,15 @@ impl Composer {
     pub fn new() -> Result<Composer, ComposerError> {
         let path = Path::new("./composer.json");
 
-        let mut content = String::new();
-
-        match read_to_string(path) {
-            Ok(c) => content = c,
+        let content = match read_to_string(path) {
+            Ok(c) => c,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 let mut file = File::create(path)?;
                 file.write_all(b"{\"require\":{}}")?;
-                content = String::from("{\"require\":{}}");
+                String::from("{\"require\":{}}")
             }
             Err(e) => return Err(ComposerError::Io(e)),
-        }
+        };
 
         let cp: Self = serde_json::from_str(&content)?;
 
