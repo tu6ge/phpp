@@ -5,9 +5,7 @@ use std::path::Path;
 
 use crate::error::ComposerError;
 
-use super::de::Psr4Data;
-
-type isVendor = bool;
+use super::{isVendor, Psr4Data};
 
 impl Psr4Data {
     fn get_psr4(&self) -> Result<Vec<(String, (isVendor, String))>, ComposerError> {

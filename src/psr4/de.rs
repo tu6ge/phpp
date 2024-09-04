@@ -1,15 +1,8 @@
 use std::{fs::create_dir_all, path::Path, str::CharIndices};
 
-use indexmap::IndexMap;
-
 use crate::error::ComposerError;
 
-type isVendor = bool;
-
-#[derive(Debug, Default)]
-pub(crate) struct Psr4Data {
-    pub(super) data: IndexMap<String, Vec<(isVendor, String)>>,
-}
+use super::Psr4Data;
 
 impl Psr4Data {
     pub fn new() -> Result<Self, ComposerError> {
