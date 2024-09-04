@@ -4,9 +4,11 @@ use indexmap::IndexMap;
 
 use crate::error::ComposerError;
 
+type isVendor = bool;
+
 #[derive(Debug, Default)]
 pub(crate) struct Psr4Data {
-    pub(super) data: IndexMap<String, Vec<String>>,
+    pub(super) data: IndexMap<String, Vec<(isVendor, String)>>,
 }
 
 impl Psr4Data {
@@ -39,6 +41,7 @@ impl Psr4Data {
 
         let mut iter = tokens.iter();
         let mut vendor_key = String::new();
+        let mut is_vendor = false;
         loop {
             let token = iter.next();
             match token {
@@ -48,14 +51,21 @@ impl Psr4Data {
                     } else {
                         this.data
                             .entry(vendor_key.clone())
-                            .and_modify(|v| v.push(str.to_owned()))
-                            .or_insert(vec![str.to_owned()]);
+                            .and_modify(|v| v.push((is_vendor, str.to_owned())))
+                            .or_insert(vec![(is_vendor, str.to_owned())]);
                     }
+                }
+                Some(Token::VendorDir) => {
+                    is_vendor = true;
+                }
+                Some(Token::BaseDir) => {
+                    is_vendor = false;
                 }
                 Some(Token::ArrayEnd) => {
                     if !vendor_key.is_empty() {
                         vendor_key = "".to_owned();
                     }
+                    is_vendor = false;
                 }
                 None => break,
                 _ => {}
@@ -76,6 +86,8 @@ enum Token {
     Var,
     //Quot,
     Literal(String),
+    VendorDir,
+    BaseDir,
 
     Arrow,
     Dot,
@@ -173,16 +185,29 @@ impl<'a> Cursor<'a> {
             }
             '$' => {
                 let mut iter = self.char.clone();
-                loop {
-                    match iter.next() {
-                        Some((_, 'a'..='z' | 'A'..='Z' | '0'..='9')) => {
-                            self.char.next();
-                        }
-                        Some((_, ' ')) | Some((_, ')')) => {
-                            return Some(Token::Var);
-                        }
-                        _ => return None,
-                    }
+                let (_, c) = iter.next()?;
+                if c == 'v' {
+                    self.char.next()?;
+                    self.char.next()?;
+                    self.char.next()?;
+                    self.char.next()?;
+                    self.char.next()?;
+                    self.char.next()?;
+                    self.char.next()?;
+                    self.char.next()?;
+                    self.char.next()?;
+                    Some(Token::VendorDir)
+                } else if c == 'b' {
+                    self.char.next()?;
+                    self.char.next()?;
+                    self.char.next()?;
+                    self.char.next()?;
+                    self.char.next()?;
+                    self.char.next()?;
+                    self.char.next()?;
+                    Some(Token::BaseDir)
+                } else {
+                    Some(Token::Other)
                 }
             }
             '.' => Some(Token::Dot),
@@ -214,15 +239,15 @@ mod tests {
     fn it_works_simple() {
         let content = include_str!("../../vendor/composer/autoload_psr4.php");
 
-        //     let content = r#"return array(
+        // let content = r#"return array(
         // 'voku\\' => array(
         //     $vendorDir . '/voku/portable-ascii/src/voku',
         // ),
         // 'Webmozart\\Assert\\' => array(
-        //     $vendorDir . '/webmozart/assert/src',
+        //     $baseDir . '/webmozart/assert/src',
         //     $vendorDir . '/webmozart/assert/src2',
         // ),"#;
-        // dbg!(content);
+        //dbg!(content);
         let res = Psr4Data::parse(content);
         println!("{:#?}", res);
     }
@@ -242,18 +267,18 @@ mod tests {
         );
         assert_eq!(cursor.advance(), Some(Token::Return));
 
-        let mut cursor = Cursor::new("$var  ");
-        assert_eq!(cursor.advance(), Some(Token::Var));
+        let mut cursor = Cursor::new("$baseDir  ");
+        assert_eq!(cursor.advance(), Some(Token::BaseDir));
         assert_eq!(cursor.advance(), Some(Token::Space));
         assert_eq!(cursor.advance(), None);
 
-        let mut cursor = Cursor::new("$var  return");
-        assert_eq!(cursor.advance(), Some(Token::Var));
+        let mut cursor = Cursor::new("$vendorDir  return");
+        assert_eq!(cursor.advance(), Some(Token::VendorDir));
         assert_eq!(cursor.advance(), Some(Token::Space));
         assert_eq!(cursor.advance(), Some(Token::Return));
 
         let mut cursor = Cursor::new("$vendorDir . '/voku/portable-ascii/src/voku'");
-        assert_eq!(cursor.advance(), Some(Token::Var));
+        assert_eq!(cursor.advance(), Some(Token::VendorDir));
         assert_eq!(cursor.advance(), Some(Token::Space));
         assert_eq!(cursor.advance(), Some(Token::Dot));
         assert_eq!(cursor.advance(), Some(Token::Space));

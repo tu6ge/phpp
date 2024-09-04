@@ -7,8 +7,10 @@ use crate::error::ComposerError;
 
 use super::de::Psr4Data;
 
+type isVendor = bool;
+
 impl Psr4Data {
-    fn get_psr4(&self) -> Result<Vec<(String, String)>, ComposerError> {
+    fn get_psr4(&self) -> Result<Vec<(String, (isVendor, String))>, ComposerError> {
         let mut res = Vec::new();
 
         for (key, value) in self.data.iter() {
@@ -39,7 +41,7 @@ return array(
         for (key, val) in list.iter() {
             psr4_dir_map
                 .entry(key)
-                .and_modify(|v: &mut Vec<&String>| v.push(val))
+                .and_modify(|v: &mut Vec<&(bool, String)>| v.push(val))
                 .or_insert(vec![val]);
         }
         let mut psr4_dir_vec = Vec::new();
@@ -51,13 +53,17 @@ return array(
             let item_con = format!("    '{}' => array(\n        ", key.replace('\\', "\\\\"),);
             content.push_str(&item_con);
 
-            for val in val.iter() {
+            for (is_vendor, val) in val.iter() {
                 let val: &str = if val.ends_with('/') {
                     &val[..val.len() - 1]
                 } else {
                     val
                 };
-                content.push_str(&format!("$vendorDir . '/{}',", val));
+                if *is_vendor {
+                    content.push_str(&format!("$vendorDir . '/{}',", val));
+                } else {
+                    content.push_str(&format!("$baseDir . '/{}',", val));
+                }
             }
             content.push_str("\n    ),\n");
         }
