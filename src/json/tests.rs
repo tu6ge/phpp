@@ -38,13 +38,14 @@ async fn simple() {
         }));
     });
 
-    let mut composer = Composer {
+    let composer = Composer {
         require: Some({
             let mut map = IndexMap::new();
             map.insert("foo/bar".to_owned(), "1.2.3".to_owned());
             map
         }),
         repositories: Some(get_repositories(server.base_url())),
+        ..Default::default()
     };
     let mut stderr = TestWriter::new();
     let ctx = default_context(&composer);
@@ -88,13 +89,14 @@ async fn one_depend() {
         }));
     });
 
-    let mut composer = Composer {
+    let composer = Composer {
         require: Some({
             let mut map = IndexMap::new();
             map.insert("foo/bar".to_owned(), "1.2.3".to_owned());
             map
         }),
         repositories: Some(get_repositories(server.base_url())),
+        ..Default::default()
     };
     let mut stderr = TestWriter::new();
     let ctx = default_context(&composer);
@@ -133,13 +135,14 @@ async fn last_stable() {
         }));
     });
 
-    let mut composer = Composer {
+    let composer = Composer {
         require: Some({
             let mut map = IndexMap::new();
             map.insert("foo/bar".to_owned(), "*".to_owned());
             map
         }),
         repositories: Some(get_repositories(server.base_url())),
+        ..Default::default()
     };
     let mut stderr = TestWriter::new();
     let ctx = default_context(&composer);
@@ -178,13 +181,14 @@ async fn php_version() {
         }));
     });
 
-    let mut composer = Composer {
+    let composer = Composer {
         require: Some({
             let mut map = IndexMap::new();
             map.insert("foo/bar".to_owned(), "*".to_owned());
             map
         }),
         repositories: Some(get_repositories(server.base_url())),
+        ..Default::default()
     };
     let mut stderr = TestWriter::new();
     let p2_url = composer.get_package_url().unwrap();
@@ -244,13 +248,14 @@ async fn php_extensions() {
         }));
     });
 
-    let mut composer = Composer {
+    let composer = Composer {
         require: Some({
             let mut map = IndexMap::new();
             map.insert("foo/bar".to_owned(), "*".to_owned());
             map
         }),
         repositories: Some(get_repositories(server.base_url())),
+        ..Default::default()
     };
     let mut stderr = TestWriter::new();
     let p2_url = composer.get_package_url().unwrap();
@@ -290,13 +295,14 @@ async fn auto_choise_version() {
         }));
     });
 
-    let mut composer = Composer {
+    let composer = Composer {
         require: Some({
             let mut map = IndexMap::new();
             map.insert("foo/bar".to_owned(), "^1".to_owned());
             map
         }),
         repositories: Some(get_repositories(server.base_url())),
+        ..Default::default()
     };
     let mut stderr = TestWriter::new();
     let ctx = default_context(&composer);

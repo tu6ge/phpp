@@ -14,7 +14,7 @@ use crate::{
     config::{GlobalConfig, Packagist, Repositories},
     error::ComposerError,
     io::ErrWriter,
-    package::{ComposerLock, Context, P2},
+    package::{AutoloadEnum, ComposerLock, Context, P2},
 };
 
 #[cfg(test)]
@@ -22,13 +22,16 @@ mod tests;
 
 const PACKAGE_URL: &str = "https://repo.packagist.org/";
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub(crate) struct Composer {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) require: Option<IndexMap<String, String>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     repositories: Option<Repositories>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    autoload: Option<AutoloadEnum>,
 }
 
 impl Composer {

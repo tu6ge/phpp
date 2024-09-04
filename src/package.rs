@@ -917,14 +917,14 @@ pub(crate) enum Require {
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
 #[serde(untagged)]
-enum AutoloadEnum {
+pub(crate) enum AutoloadEnum {
     Psr(Autoload),
     String(String),
     Null(),
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
-struct Autoload {
+pub(crate) struct Autoload {
     #[serde(rename = "psr-4")]
     #[serde(skip_serializing_if = "Option::is_none")]
     psr4: Option<HashMap<String, PsrValue>>,
