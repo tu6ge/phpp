@@ -1,14 +1,26 @@
-use std::str::CharIndices;
+use std::{fs::create_dir_all, path::Path, str::CharIndices};
 
 use indexmap::IndexMap;
 
+use crate::error::ComposerError;
+
 #[derive(Debug, Default)]
-struct Psr4Data {
-    data: IndexMap<String, Vec<String>>,
+pub(crate) struct Psr4Data {
+    pub(super) data: IndexMap<String, Vec<String>>,
 }
 
 impl Psr4Data {
-    fn parse(str: &str) -> Self {
+    pub fn new() -> Result<Self, ComposerError> {
+        let path = Path::new("./vendor/composer/");
+        // if !path.exists() {
+        //     create_dir_all(path)?;
+        // }
+        let path = path.join("autoload_psr4.php");
+        let content = std::fs::read_to_string(path)?;
+        Ok(Self::parse(&content))
+    }
+
+    pub(crate) fn parse(str: &str) -> Self {
         let mut cursor = Cursor::new(str);
 
         let mut tokens = Vec::new();
