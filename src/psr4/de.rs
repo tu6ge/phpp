@@ -2,8 +2,56 @@ use std::str::CharIndices;
 
 use indexmap::IndexMap;
 
+#[derive(Debug, Default)]
 struct Psr4Data {
     data: IndexMap<String, Vec<String>>,
+}
+
+impl Psr4Data {
+    fn parse(str: &str) -> Self {
+        let mut cursor = Cursor::new(str);
+
+        let mut tokens = Vec::new();
+        loop {
+            let token = cursor.advance();
+            match token {
+                Some(Token::Other) | Some(Token::Space) | Some(Token::Dot) | Some(Token::Var) => {
+                    continue;
+                }
+                Some(t) => tokens.push(t),
+                None => break,
+            }
+        }
+        let mut this = Self::default();
+        //println!("{:?}", tokens);
+
+        let mut iter = tokens.iter();
+        let mut vendor_key = String::new();
+        loop {
+            let token = iter.next();
+            match token {
+                Some(Token::Literal(str)) => {
+                    if vendor_key.is_empty() {
+                        vendor_key = str.to_owned().replace("\\\\", "\\");
+                    } else {
+                        this.data
+                            .entry(vendor_key.clone())
+                            .and_modify(|v| v.push(str.to_owned()))
+                            .or_insert(vec![str.to_owned()]);
+                    }
+                }
+                Some(Token::ArrayEnd) => {
+                    if !vendor_key.is_empty() {
+                        vendor_key = "".to_owned();
+                    }
+                }
+                None => break,
+                _ => {}
+            }
+        }
+
+        this
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,14 +75,12 @@ enum Token {
 pub struct Cursor<'a> {
     source_str: &'a str,
     char: CharIndices<'a>,
-    token: Vec<Token>,
 }
 impl<'a> Cursor<'a> {
     pub fn new(source: &'a str) -> Self {
         Self {
             source_str: source,
             char: source.char_indices(),
-            token: Vec::new(),
         }
     }
 
@@ -146,21 +192,6 @@ impl<'a> Cursor<'a> {
             }
         }
     }
-
-    pub fn parse(&mut self) -> Vec<Token> {
-        let mut tokens = Vec::new();
-        loop {
-            let token = self.advance();
-            match token {
-                Some(Token::Other) | Some(Token::Space) => {
-                    continue;
-                }
-                Some(t) => tokens.push(t),
-                None => break,
-            }
-        }
-        tokens
-    }
 }
 
 #[cfg(test)]
@@ -170,11 +201,18 @@ mod tests {
     #[test]
     fn it_works_simple() {
         let content = include_str!("../../vendor/composer/autoload_psr4.php");
-        // dbg!(content);
-        let mut cursor = Cursor::new(content);
-        let tokens = cursor.parse();
 
-        println!("{:?}", tokens);
+        //     let content = r#"return array(
+        // 'voku\\' => array(
+        //     $vendorDir . '/voku/portable-ascii/src/voku',
+        // ),
+        // 'Webmozart\\Assert\\' => array(
+        //     $vendorDir . '/webmozart/assert/src',
+        //     $vendorDir . '/webmozart/assert/src2',
+        // ),"#;
+        // dbg!(content);
+        let res = Psr4Data::parse(content);
+        println!("{:#?}", res);
     }
 
     #[test]
