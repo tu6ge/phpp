@@ -80,7 +80,7 @@ return array(
 }
 
 impl FilesData {
-    fn write_autoload_files(&self) -> Result<(), ComposerError> {
+    pub(crate) fn write_autoload_files(&self) -> Result<(), ComposerError> {
         let mut content = String::from(
             r#"<?php
 
