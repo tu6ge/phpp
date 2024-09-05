@@ -77,10 +77,72 @@ return array(
 
         Ok(())
     }
+
+    pub(crate) fn to_static(&self) -> (String, String) {
+        let mut psr4_length_map = HashMap::new();
+        for (key, _) in self.data.iter() {
+            let first = key.chars().next().unwrap();
+            psr4_length_map
+                .entry(first)
+                .and_modify(|v: &mut Vec<&String>| v.push(key))
+                .or_insert(vec![key]);
+        }
+        let mut psr4_length_vec = Vec::new();
+        for (key, v) in psr4_length_map.iter() {
+            psr4_length_vec.push((key, v));
+        }
+        psr4_length_vec.sort_by(|a, b| b.0.cmp(a.0));
+
+        let mut psr4_length_content = String::new();
+        for (ch, vec) in psr4_length_vec.iter() {
+            psr4_length_content.push_str(&format!("        '{}' => array (\n", ch));
+            for it in vec.iter() {
+                psr4_length_content.push_str(&format!(
+                    "            '{}' => {},\n",
+                    it.replace("\\", "\\\\"),
+                    it.len()
+                ));
+            }
+            psr4_length_content.push_str("        ),\n");
+        }
+
+        let mut psr4_dir_vec = Vec::new();
+        for (key, val) in self.data.iter() {
+            psr4_dir_vec.push((key, val));
+        }
+        psr4_dir_vec.sort_by(|a, b| b.0.cmp(a.0));
+
+        let mut psr4_dir_content = String::new();
+
+        for (key, val) in psr4_dir_vec.iter() {
+            psr4_dir_content.push_str(&format!(
+                "        '{}' => array(\n",
+                key.replace('\\', "\\\\")
+            ));
+            for (i, (is, it)) in val.iter().enumerate() {
+                if *is {
+                    psr4_dir_content.push_str(&format!(
+                        "            {}=> __DIR__ . '/..' . '/{}',\n",
+                        i,
+                        &it[..it.len() - 1]
+                    ));
+                } else {
+                    psr4_dir_content.push_str(&format!(
+                        "            {}=> __DIR__ . '/../..' . '/{}',\n",
+                        i,
+                        &it[..it.len() - 1]
+                    ));
+                }
+            }
+            psr4_dir_content.push_str("        ),\n");
+        }
+
+        (psr4_length_content, psr4_dir_content)
+    }
 }
 
 impl FilesData {
-    pub(crate) fn write_autoload_files(&self) -> Result<(), ComposerError> {
+    pub(crate) fn write(&self) -> Result<(), ComposerError> {
         let mut content = String::from(
             r#"<?php
 
@@ -110,5 +172,24 @@ return array(
         f.write_all(content.as_bytes())?;
 
         Ok(())
+    }
+
+    pub(crate) fn to_static(&self) -> String {
+        let mut files_content = String::new();
+        for (key, (is_vendor, value)) in self.data.iter() {
+            if *is_vendor {
+                files_content.push_str(&format!(
+                    "        '{}' => __DIR__ . '/..' . '{}',\n",
+                    key, value
+                ));
+            } else {
+                files_content.push_str(&format!(
+                    "        '{}' => __DIR__ . '/../..' . '{}',\n",
+                    key, value
+                ));
+            }
+        }
+
+        files_content
     }
 }

@@ -536,28 +536,6 @@ impl ComposerLock {
         Ok(())
     }
 
-    fn get_psr4(&self) -> Result<Vec<(String, String)>, ComposerError> {
-        let mut res = Vec::new();
-        for item in self.packages.iter() {
-            if let Some(AutoloadEnum::Psr(Autoload {
-                psr4: Some(psr), ..
-            })) = &item.autoload
-            {
-                for (key, value) in psr.iter() {
-                    if let PsrValue::String(value) = value {
-                        let mut v = item.name.as_ref().unwrap().clone();
-                        v.push('/');
-                        v.push_str(value);
-                        res.push((key.to_owned(), v));
-                    }
-                }
-            }
-        }
-        res.sort_by(|a, b| b.0.cmp(&a.0));
-
-        Ok(res)
-    }
-
     fn write_psr4(&self) -> Result<(), ComposerError> {
         let data: Psr4Data = self.clone().into();
 
@@ -643,106 +621,21 @@ impl ComposerLock {
         Ok(())
     }
 
-    // TODO plan delete
-    fn get_autoload_files(&self) -> Result<Vec<String>, ComposerError> {
-        let mut res = Vec::new();
-        for item in self.packages.iter() {
-            if let Some(AutoloadEnum::Psr(Autoload {
-                files: Some(files), ..
-            })) = &item.autoload
-            {
-                for it in files {
-                    let con = format!("/{}/{}", item.name.as_ref().unwrap(), it);
-                    res.push(con);
-                }
-            }
-        }
-
-        Ok(res)
-    }
     fn write_autoload_files(&self) -> Result<(), ComposerError> {
         let files: FilesData = self.clone().into();
-        files.write_autoload_files()
+        files.write()
     }
 
     fn write_autoload_static(&self) -> Result<(), ComposerError> {
-        use sha1::Digest;
-        use sha1::Sha1;
-
-        let mut files_content = String::new();
-
-        let files = self.get_autoload_files()?;
-        for item in files.iter() {
-            let mut hasher = Sha1::new();
-            hasher.update(item.as_bytes());
-            let sha1 = hasher.finalize();
-
-            let key = hex::encode(sha1);
-            files_content.push_str(&format!(
-                "        '{}' => __DIR__ . '/..' . '{}',\n",
-                key, item
-            ));
-        }
-
-        let mut psr4_length_map = HashMap::new();
-        let psr4 = self.get_psr4()?;
-        for (key, _) in psr4.iter() {
-            let first = key.chars().next().unwrap();
-            psr4_length_map
-                .entry(first)
-                .and_modify(|v: &mut Vec<&String>| v.push(key))
-                .or_insert(vec![key]);
-        }
-        let mut psr4_length_vec = Vec::new();
-        for (key, v) in psr4_length_map.iter() {
-            psr4_length_vec.push((key, v));
-        }
-        psr4_length_vec.sort_by(|a, b| b.0.cmp(a.0));
-
-        let mut psr4_length_content = String::new();
-        for (ch, vec) in psr4_length_vec.iter() {
-            psr4_length_content.push_str(&format!("        '{}' => array (\n", ch));
-            for it in vec.iter() {
-                psr4_length_content.push_str(&format!(
-                    "            '{}' => {},\n",
-                    it.replace('\\', "\\\\"),
-                    it.len()
-                ));
-            }
-            psr4_length_content.push_str("        ),\n");
-        }
-
-        let mut psr4_dir_map = HashMap::new();
-        for (key, val) in psr4.iter() {
-            psr4_dir_map
-                .entry(key)
-                .and_modify(|v: &mut Vec<&String>| v.push(val))
-                .or_insert(vec![val]);
-        }
-        let mut psr4_dir_vec = Vec::new();
-        for (key, val) in psr4_dir_map.iter() {
-            psr4_dir_vec.push((key, val));
-        }
-        psr4_dir_vec.sort_by(|a, b| b.0.cmp(a.0));
-
-        let mut psr4_dir_content = String::new();
-
-        for (key, val) in psr4_dir_vec.iter() {
-            psr4_dir_content.push_str(&format!(
-                "        '{}' => array(\n",
-                key.replace('\\', "\\\\")
-            ));
-            for (i, it) in val.iter().enumerate() {
-                psr4_dir_content.push_str(&format!(
-                    "            {}=> __DIR__ . '/..' . '/{}',\n",
-                    i,
-                    &it[..it.len() - 1]
-                ));
-            }
-            psr4_dir_content.push_str("        ),\n");
-        }
+        //let mut files_content = String::new();
 
         let content = include_str!("../asset/autoload_static.php");
+
+        let data: FilesData = self.clone().into();
+        let files_content = data.to_static();
+
+        let psr4: Psr4Data = self.clone().into();
+        let (psr4_length_content, psr4_dir_content) = psr4.to_static();
 
         let content = content.replace("__FILES_CONTENT__", &files_content);
         let content = content.replace("__PSR4_LENGTH__", &psr4_length_content);
