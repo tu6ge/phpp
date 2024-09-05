@@ -2,7 +2,7 @@ use std::{fs::create_dir_all, path::Path, str::CharIndices};
 
 use crate::error::ComposerError;
 
-use super::Psr4Data;
+use super::{FilesData, Psr4Data};
 
 impl Psr4Data {
     pub fn new() -> Result<Self, ComposerError> {
@@ -55,6 +55,68 @@ impl Psr4Data {
                     is_vendor = false;
                 }
                 Some(Token::ArrayEnd) => {
+                    if !vendor_key.is_empty() {
+                        vendor_key = "".to_owned();
+                    }
+                    is_vendor = false;
+                }
+                None => break,
+                _ => {}
+            }
+        }
+
+        this
+    }
+}
+impl FilesData {
+    pub fn new() -> Result<Self, ComposerError> {
+        let path = Path::new("./vendor/composer/");
+        // if !path.exists() {
+        //     create_dir_all(path)?;
+        // }
+        let path = path.join("autoload_files.php");
+        let content = std::fs::read_to_string(path)?;
+        Ok(Self::parse(&content))
+    }
+
+    pub(crate) fn parse(str: &str) -> Self {
+        let mut cursor = Cursor::new(str);
+
+        let mut tokens = Vec::new();
+        loop {
+            let token = cursor.advance();
+            match token {
+                Some(Token::Other) | Some(Token::Space) | Some(Token::Dot) | Some(Token::Var) => {
+                    continue;
+                }
+                Some(t) => tokens.push(t),
+                None => break,
+            }
+        }
+        let mut this = Self::default();
+        //println!("{:?}", tokens);
+
+        let mut iter = tokens.iter();
+        let mut vendor_key = String::new();
+        let mut is_vendor = false;
+        loop {
+            let token = iter.next();
+            match token {
+                Some(Token::Literal(str)) => {
+                    if vendor_key.is_empty() {
+                        vendor_key = str.to_owned();
+                    } else {
+                        this.data
+                            .insert(vendor_key.to_string(), (is_vendor, str.to_owned()));
+                    }
+                }
+                Some(Token::VendorDir) => {
+                    is_vendor = true;
+                }
+                Some(Token::BaseDir) => {
+                    is_vendor = false;
+                }
+                Some(Token::ArraySplit) => {
                     if !vendor_key.is_empty() {
                         vendor_key = "".to_owned();
                     }
@@ -262,6 +324,11 @@ mod tests {
             }
         }
         println!("{:#?}", tokens);
+    }
+    #[test]
+    fn test_real_files_parse() {
+        let files = FilesData::new().unwrap();
+        println!("{:#?}", files);
     }
 
     #[test]

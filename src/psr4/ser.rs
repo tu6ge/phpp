@@ -5,10 +5,10 @@ use std::path::Path;
 
 use crate::error::ComposerError;
 
-use super::{isVendor, Psr4Data};
+use super::{IsVendor, Psr4Data};
 
 impl Psr4Data {
-    fn get_psr4(&self) -> Result<Vec<(String, (isVendor, String))>, ComposerError> {
+    fn get_psr4(&self) -> Result<Vec<(String, (IsVendor, String))>, ComposerError> {
         let mut res = Vec::new();
 
         for (key, value) in self.data.iter() {
