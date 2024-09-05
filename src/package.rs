@@ -537,7 +537,7 @@ impl ComposerLock {
     }
 
     fn write_psr4(&self) -> Result<(), ComposerError> {
-        let data: Psr4Data = self.clone().into();
+        let data: Psr4Data = self.into();
 
         data.write()
     }
@@ -622,7 +622,7 @@ impl ComposerLock {
     }
 
     fn write_autoload_files(&self) -> Result<(), ComposerError> {
-        let files: FilesData = self.clone().into();
+        let files: FilesData = self.into();
         files.write()
     }
 
@@ -631,10 +631,10 @@ impl ComposerLock {
 
         let content = include_str!("../asset/autoload_static.php");
 
-        let data: FilesData = self.clone().into();
+        let data: FilesData = self.into();
         let files_content = data.to_static();
 
-        let psr4: Psr4Data = self.clone().into();
+        let psr4: Psr4Data = self.into();
         let (psr4_length_content, psr4_dir_content) = psr4.to_static();
 
         let content = content.replace("__FILES_CONTENT__", &files_content);

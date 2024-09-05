@@ -17,8 +17,8 @@ pub(crate) struct FilesData {
     data: IndexMap<String, (IsVendor, String)>,
 }
 
-impl From<ComposerLock> for Psr4Data {
-    fn from(value: ComposerLock) -> Self {
+impl From<&ComposerLock> for Psr4Data {
+    fn from(value: &ComposerLock) -> Self {
         let mut res = Vec::new();
         for item in value.packages.iter() {
             if let Some(AutoloadEnum::Psr(Autoload {
@@ -64,8 +64,8 @@ impl FilesData {
     }
 }
 
-impl From<ComposerLock> for FilesData {
-    fn from(value: ComposerLock) -> Self {
+impl From<&ComposerLock> for FilesData {
+    fn from(value: &ComposerLock) -> Self {
         let mut this = Self::default();
         for item in value.packages.iter() {
             if let Some(AutoloadEnum::Psr(Autoload {
