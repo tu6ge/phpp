@@ -150,7 +150,7 @@ impl<'a> Cursor<'a> {
                     match iter.next() {
                         Some((
                             last_usize,
-                            'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '\\' | '/',
+                            'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '\\' | '/' | '.' | '_',
                         )) => {
                             current_usize = last_usize;
                             self.char.next();
@@ -229,7 +229,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works_simple() {
+    fn test_parse_psr4() {
         let content = include_str!("../../vendor/composer/autoload_psr4.php");
 
         // let content = r#"return array(
@@ -243,6 +243,25 @@ mod tests {
         //dbg!(content);
         let res = Psr4Data::parse(content);
         println!("{:#?}", res);
+    }
+
+    #[test]
+    fn test_parse_files() {
+        let content = include_str!("../../vendor/composer/autoload_files.php");
+        let mut cursor = Cursor::new(content);
+
+        let mut tokens = Vec::new();
+        loop {
+            let token = cursor.advance();
+            match token {
+                Some(Token::Other) | Some(Token::Space) | Some(Token::Dot) | Some(Token::Var) => {
+                    continue;
+                }
+                Some(t) => tokens.push(t),
+                None => break,
+            }
+        }
+        println!("{:#?}", tokens);
     }
 
     #[test]
