@@ -3,6 +3,7 @@ use std::{
     fs::{create_dir_all, read_to_string, File},
     future::Future,
     io::Write,
+    os::macos::raw::stat,
     path::{Path, PathBuf},
     pin::Pin,
     process::Command,
@@ -17,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 
 use crate::{
-    autoload::{FilesData, Psr4Data},
+    autoload::{FilesData, Psr4Data, StaticData},
     error::ComposerError,
 };
 
@@ -627,29 +628,13 @@ impl ComposerLock {
     }
 
     fn write_autoload_static(&self) -> Result<(), ComposerError> {
-        //let mut files_content = String::new();
-
-        let content = include_str!("../asset/autoload_static.php");
-
         let data: FilesData = self.into();
-        let files_content = data.to_static();
 
         let psr4: Psr4Data = self.into();
-        let (psr4_length_content, psr4_dir_content) = psr4.to_static();
 
-        let content = content.replace("__FILES_CONTENT__", &files_content);
-        let content = content.replace("__PSR4_LENGTH__", &psr4_length_content);
-        let content = content.replace("__PSR4_DIRS__", &psr4_dir_content);
+        let static_data = StaticData::from(&data, &psr4);
 
-        let path = Path::new("./vendor/composer/");
-        if !path.exists() {
-            create_dir_all(path)?;
-        }
-        let path = path.join("autoload_static.php");
-        let mut f = File::create(path)?;
-        f.write_all(content.as_bytes())?;
-
-        Ok(())
+        static_data.write()
     }
 
     pub fn find_version(&self, name: &str) -> Option<&Version> {

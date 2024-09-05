@@ -1,6 +1,15 @@
+use std::{
+    fs::{create_dir_all, File},
+    io::Write,
+    path::Path,
+};
+
 use indexmap::IndexMap;
 
-use crate::package::{Autoload, AutoloadEnum, ComposerLock, PsrValue};
+use crate::{
+    error::ComposerError,
+    package::{Autoload, AutoloadEnum, ComposerLock, PsrValue},
+};
 
 mod de;
 mod ser;
@@ -15,6 +24,13 @@ pub(crate) struct Psr4Data {
 #[derive(Debug, Default)]
 pub(crate) struct FilesData {
     data: IndexMap<String, (IsVendor, String)>,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct StaticData {
+    files: String,
+    psr4_length: String,
+    psr4_dir: String,
 }
 
 impl From<&ComposerLock> for Psr4Data {
@@ -80,5 +96,36 @@ impl From<&ComposerLock> for FilesData {
         }
 
         this
+    }
+}
+
+impl StaticData {
+    pub fn from(files: &FilesData, psr4: &Psr4Data) -> Self {
+        let files = files.to_static();
+        let (psr4_length, psr4_dir) = psr4.to_static();
+
+        Self {
+            files,
+            psr4_length,
+            psr4_dir,
+        }
+    }
+
+    pub fn write(&self) -> Result<(), ComposerError> {
+        let content = include_str!("../../asset/autoload_static.php");
+
+        let content = content.replace("__FILES_CONTENT__", &self.files);
+        let content = content.replace("__PSR4_LENGTH__", &self.psr4_length);
+        let content = content.replace("__PSR4_DIRS__", &self.psr4_dir);
+
+        let path = Path::new("./vendor/composer/");
+        if !path.exists() {
+            create_dir_all(path)?;
+        }
+        let path = path.join("autoload_static.php");
+        let mut f = File::create(path)?;
+        f.write_all(content.as_bytes())?;
+
+        Ok(())
     }
 }
