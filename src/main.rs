@@ -5,12 +5,12 @@ use io::StderrWriter;
 use json::Composer;
 use package::P2;
 
+mod autoload;
 mod config;
 mod error;
 mod io;
 mod json;
 mod package;
-mod psr4;
 
 #[tokio::main]
 async fn main() -> Result<(), ComposerError> {
