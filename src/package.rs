@@ -871,7 +871,7 @@ pub struct Version {
     pub(crate) require_dev: Option<Require>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    autoload: Option<AutoloadEnum>,
+    pub(crate) autoload: Option<AutoloadEnum>,
 }
 
 impl Version {
@@ -927,7 +927,7 @@ pub(crate) enum AutoloadEnum {
 pub(crate) struct Autoload {
     #[serde(rename = "psr-4")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    psr4: Option<HashMap<String, PsrValue>>,
+    pub(crate) psr4: Option<HashMap<String, PsrValue>>,
 
     #[serde(rename = "psr-0")]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -937,12 +937,12 @@ pub(crate) struct Autoload {
     classmap: Option<AutoLoadClassmap>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    files: Option<Vec<String>>,
+    pub(crate) files: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
 #[serde(untagged)]
-enum PsrValue {
+pub(crate) enum PsrValue {
     String(String),
     Array(Vec<String>),
 }
