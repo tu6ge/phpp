@@ -24,7 +24,7 @@ use crate::{
 };
 
 const CACHE_DIR: &str = ".cache/phpp";
-const MY_USER_AGENT: &str = "tu6ge/phpp";
+pub const MY_USER_AGENT: &str = "tu6ge/phpp";
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct P2 {

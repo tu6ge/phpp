@@ -10,6 +10,7 @@ Support subcommand :
 - remove
 - clear
 - dump-autoload
+- search
 - config set repo
 
 

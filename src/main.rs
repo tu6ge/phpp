@@ -11,6 +11,7 @@ mod error;
 mod io;
 mod json;
 mod package;
+mod search;
 
 #[tokio::main]
 async fn main() -> Result<(), ComposerError> {
@@ -40,6 +41,9 @@ async fn main() -> Result<(), ComposerError> {
         }
         Commands::DumpAutoload => {
             composer.dump_autoload()?;
+        }
+        Commands::Search { keyword } => {
+            search::Search::new(&keyword).search().await?;
         }
         Commands::Config {
             global,
@@ -81,6 +85,9 @@ enum Commands {
         name: String,
     },
     DumpAutoload,
+    Search {
+        keyword: String,
+    },
     Config {
         /// setting global
         #[arg(short, long)]
