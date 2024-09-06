@@ -11,6 +11,7 @@ pub enum ComposerError {
 
     Json(#[from] serde_json::Error),
 
+    #[allow(dead_code)]
     NotFoundPackage(String),
 
     NotFoundHomeDir,
