@@ -33,36 +33,45 @@ pub(crate) struct StaticData {
     psr4_dir: String,
 }
 
-impl From<&ComposerLock> for Psr4Data {
-    fn from(value: &ComposerLock) -> Self {
+impl Psr4Data {
+    pub fn append_lock(&mut self, lock: &ComposerLock) {
         let mut res = Vec::new();
-        for item in value.packages.iter() {
+        for item in lock.packages.iter() {
             if let Some(AutoloadEnum::Psr(Autoload {
                 psr4: Some(psr), ..
             })) = &item.autoload
             {
                 for (key, value) in psr.iter() {
                     if let PsrValue::String(value) = value {
-                        let mut v = item.name.as_ref().unwrap().clone();
-                        v.push('/');
+                        let mut v = format!("/{}", item.name.as_ref().unwrap());
+                        //v.push('/');
+                        let value = if value.ends_with('/') {
+                            value.trim_end_matches('/')
+                        } else {
+                            &value
+                        };
+                        if !value.is_empty() {
+                            v.push('/');
+                        }
                         v.push_str(value);
                         res.push((key.to_owned(), v));
                     }
                 }
             }
         }
-        res.sort_by(|a, b| b.0.cmp(&a.0));
-
-        let mut data = IndexMap::new();
+        //res.sort_by(|a, b| b.0.cmp(&a.0));
         for (key, value) in res.iter() {
-            data.entry(key.to_owned())
+            self.data
+                .entry(key.to_owned())
                 .and_modify(|v: &mut Vec<(bool, String)>| {
-                    v.push((true, value.to_owned()));
+                    if !v.contains(&(true, value.to_owned())) {
+                        v.push((true, value.to_owned()));
+                    }
                 })
                 .or_insert(vec![(true, value.to_owned())]);
         }
-
-        Self { data }
+        // println!("{:#?}", self.data);
+        // todo!()
     }
 }
 
@@ -78,24 +87,18 @@ impl FilesData {
 
         self.data.insert(key, (is_vendor, value))
     }
-}
-
-impl From<&ComposerLock> for FilesData {
-    fn from(value: &ComposerLock) -> Self {
-        let mut this = Self::default();
-        for item in value.packages.iter() {
+    pub fn append_lock(&mut self, lock: &ComposerLock) {
+        for item in lock.packages.iter() {
             if let Some(AutoloadEnum::Psr(Autoload {
                 files: Some(files), ..
             })) = &item.autoload
             {
                 for it in files {
                     let con = format!("/{}/{}", item.name.as_ref().unwrap(), it);
-                    this.insert(true, con);
+                    self.insert(true, con);
                 }
             }
         }
-
-        this
     }
 }
 

@@ -58,9 +58,9 @@ return array(
                     val
                 };
                 if *is_vendor {
-                    content.push_str(&format!("$vendorDir . '/{}',", val));
+                    content.push_str(&format!("$vendorDir . '{}',", val));
                 } else {
-                    content.push_str(&format!("$baseDir . '/{}',", val));
+                    content.push_str(&format!("$baseDir . '{}',", val));
                 }
             }
             content.push_str("\n    ),\n");

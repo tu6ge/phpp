@@ -538,7 +538,8 @@ impl ComposerLock {
     }
 
     fn write_psr4(&self) -> Result<(), ComposerError> {
-        let data: Psr4Data = self.into();
+        let mut data = Psr4Data::new()?;
+        data.append_lock(&self);
 
         data.write()
     }
@@ -623,16 +624,19 @@ impl ComposerLock {
     }
 
     fn write_autoload_files(&self) -> Result<(), ComposerError> {
-        let files: FilesData = self.into();
+        let mut files = FilesData::new()?;
+        files.append_lock(&self);
         files.write()
     }
 
     fn write_autoload_static(&self) -> Result<(), ComposerError> {
-        let data: FilesData = self.into();
+        let mut files = FilesData::new()?;
+        files.append_lock(&self);
 
-        let psr4: Psr4Data = self.into();
+        let mut psr4 = Psr4Data::new()?;
+        psr4.append_lock(&self);
 
-        let static_data = StaticData::from(&data, &psr4);
+        let static_data = StaticData::from(&files, &psr4);
 
         static_data.write()
     }

@@ -7,11 +7,18 @@ use super::{FilesData, Psr4Data};
 impl Psr4Data {
     pub fn new() -> Result<Self, ComposerError> {
         let path = Path::new("./vendor/composer/");
-        // if !path.exists() {
-        //     create_dir_all(path)?;
-        // }
+        if !path.exists() {
+            create_dir_all(path)?;
+        }
         let path = path.join("autoload_psr4.php");
-        let content = std::fs::read_to_string(path)?;
+        let content = match std::fs::read_to_string(path) {
+            Ok(content) => content,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(Self::default());
+            }
+            Err(e) => return Err(e.into()),
+        };
+
         Ok(Self::parse(&content))
     }
 
@@ -71,11 +78,17 @@ impl Psr4Data {
 impl FilesData {
     pub fn new() -> Result<Self, ComposerError> {
         let path = Path::new("./vendor/composer/");
-        // if !path.exists() {
-        //     create_dir_all(path)?;
-        // }
+        if !path.exists() {
+            create_dir_all(path)?;
+        }
         let path = path.join("autoload_files.php");
-        let content = std::fs::read_to_string(path)?;
+        let content = match std::fs::read_to_string(path) {
+            Ok(content) => content,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(Self::default());
+            }
+            Err(e) => return Err(e.into()),
+        };
         Ok(Self::parse(&content))
     }
 
