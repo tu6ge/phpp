@@ -75,19 +75,27 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Adds required packages to your composer.json and installs them
     Require {
         name: String,
         version: Option<String>,
     },
+
+    /// Installs the project dependencies from the composer.lock file if present, or falls back on the composer.json
     Install,
+
+    /// Clears composer's internal package cache
     Clear,
-    Remove {
-        name: String,
-    },
+
+    /// Removes a package from the require or require-dev
+    Remove { name: String },
+
+    /// Dumps the autoloader
     DumpAutoload,
-    Search {
-        keyword: String,
-    },
+
+    /// Searches for packages
+    Search { keyword: String },
+    /// Sets config options
     Config {
         /// setting global
         #[arg(short, long)]
