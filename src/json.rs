@@ -11,6 +11,7 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    autoload::{FilesData, Psr4Data, StaticData},
     config::{GlobalConfig, Packagist, Repositories},
     error::ComposerError,
     io::ErrWriter,
@@ -31,7 +32,7 @@ pub(crate) struct Composer {
     repositories: Option<Repositories>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    autoload: Option<AutoloadEnum>,
+    pub(crate) autoload: Option<AutoloadEnum>,
 }
 
 impl Composer {
@@ -338,5 +339,19 @@ impl Composer {
         url.push_str("/p2/");
 
         Ok(url)
+    }
+
+    pub fn dump_autoload(&self) -> Result<(), ComposerError> {
+        let mut psr4 = Psr4Data::new()?;
+        psr4.append_json(&self);
+        psr4.write()?;
+
+        let mut files = FilesData::new()?;
+        files.append_json(&self);
+        files.write()?;
+
+        let static_files = StaticData::from(&files, &psr4);
+        static_files.write()?;
+        Ok(())
     }
 }

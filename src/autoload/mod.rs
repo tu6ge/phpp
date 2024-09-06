@@ -8,6 +8,7 @@ use indexmap::IndexMap;
 
 use crate::{
     error::ComposerError,
+    json::Composer,
     package::{Autoload, AutoloadEnum, ComposerLock, PsrValue},
 };
 
@@ -34,6 +35,38 @@ pub(crate) struct StaticData {
 }
 
 impl Psr4Data {
+    pub fn append_json(&mut self, json: &Composer) {
+        let mut res = Vec::new();
+        if let Some(AutoloadEnum::Psr(Autoload {
+            psr4: Some(psr), ..
+        })) = &json.autoload
+        {
+            for (key, value) in psr.iter() {
+                if let PsrValue::String(value) = value {
+                    let mut v = format!("/");
+                    //v.push('/');
+                    let value = if value.ends_with('/') {
+                        value.trim_end_matches('/')
+                    } else {
+                        &value
+                    };
+                    v.push_str(value);
+                    res.push((key.to_owned(), v));
+                }
+            }
+        }
+        for (key, value) in res.iter() {
+            self.data
+                .entry(key.to_owned())
+                .and_modify(|v: &mut Vec<(bool, String)>| {
+                    if !v.contains(&(false, value.to_owned())) {
+                        v.push((false, value.to_owned()));
+                    }
+                })
+                .or_insert(vec![(false, value.to_owned())]);
+        }
+    }
+
     pub fn append_lock(&mut self, lock: &ComposerLock) {
         let mut res = Vec::new();
         for item in lock.packages.iter() {
@@ -86,6 +119,17 @@ impl FilesData {
         let key = hex::encode(sha1);
 
         self.data.insert(key, (is_vendor, value))
+    }
+    pub fn append_json(&mut self, json: &Composer) {
+        if let Some(AutoloadEnum::Psr(Autoload {
+            files: Some(files), ..
+        })) = &json.autoload
+        {
+            for it in files {
+                let con = format!("/{}", it);
+                self.insert(false, con);
+            }
+        }
     }
     pub fn append_lock(&mut self, lock: &ComposerLock) {
         for item in lock.packages.iter() {

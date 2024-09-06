@@ -38,6 +38,9 @@ async fn main() -> Result<(), ComposerError> {
             composer.remove(name, &mut std_err).await?;
             composer.save()?;
         }
+        Commands::DumpAutoload => {
+            composer.dump_autoload()?;
+        }
         Commands::Config {
             global,
             unset,
@@ -77,6 +80,7 @@ enum Commands {
     Remove {
         name: String,
     },
+    DumpAutoload,
     Config {
         /// setting global
         #[arg(short, long)]
