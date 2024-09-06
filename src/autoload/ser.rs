@@ -124,13 +124,13 @@ return array(
                     psr4_dir_content.push_str(&format!(
                         "            {}=> __DIR__ . '/..' . '/{}',\n",
                         i,
-                        &it[..it.len() - 1]
+                        &it[..]
                     ));
                 } else {
                     psr4_dir_content.push_str(&format!(
                         "            {}=> __DIR__ . '/../..' . '/{}',\n",
                         i,
-                        &it[..it.len() - 1]
+                        &it[..]
                     ));
                 }
             }
