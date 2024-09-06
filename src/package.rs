@@ -1,9 +1,10 @@
+//! disponse P2 and parse composer.lock file
+
 use std::{
     collections::{HashMap, HashSet},
     fs::{create_dir_all, read_to_string, File},
     future::Future,
     io::Write,
-    os::macos::raw::stat,
     path::{Path, PathBuf},
     pin::Pin,
     process::Command,

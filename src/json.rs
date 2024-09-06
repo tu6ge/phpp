@@ -1,4 +1,4 @@
-//! about composer.json
+//! parse composer.json
 
 use std::{
     fs::{read_to_string, remove_dir_all, File},
