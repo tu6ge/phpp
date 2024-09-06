@@ -122,13 +122,13 @@ return array(
             for (i, (is, it)) in val.iter().enumerate() {
                 if *is {
                     psr4_dir_content.push_str(&format!(
-                        "            {}=> __DIR__ . '/..' . '/{}',\n",
+                        "            {}=> __DIR__ . '/..' . '{}',\n",
                         i,
                         &it[..]
                     ));
                 } else {
                     psr4_dir_content.push_str(&format!(
-                        "            {}=> __DIR__ . '/../..' . '/{}',\n",
+                        "            {}=> __DIR__ . '/../..' . '{}',\n",
                         i,
                         &it[..]
                     ));
