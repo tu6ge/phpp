@@ -9,6 +9,7 @@ Support subcommand :
 - install
 - remove
 - clear
+- dump-autoload
 - config set repo
 
 
