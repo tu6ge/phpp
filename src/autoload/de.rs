@@ -29,7 +29,7 @@ impl Psr4Data {
         loop {
             let token = cursor.advance();
             match token {
-                Some(Token::Other) | Some(Token::Space) | Some(Token::Dot) | Some(Token::Var) => {
+                Some(Token::Other) | Some(Token::Space) | Some(Token::Dot) => {
                     continue;
                 }
                 Some(t) => tokens.push(t),
@@ -99,7 +99,7 @@ impl FilesData {
         loop {
             let token = cursor.advance();
             match token {
-                Some(Token::Other) | Some(Token::Space) | Some(Token::Dot) | Some(Token::Var) => {
+                Some(Token::Other) | Some(Token::Space) | Some(Token::Dot) => {
                     continue;
                 }
                 Some(t) => tokens.push(t),
@@ -151,7 +151,6 @@ enum Token {
     ArrayStart,
     ArrayEnd,
     ArraySplit,
-    Var,
     //Quot,
     Literal(String),
     VendorDir,
@@ -329,7 +328,7 @@ mod tests {
         loop {
             let token = cursor.advance();
             match token {
-                Some(Token::Other) | Some(Token::Space) | Some(Token::Dot) | Some(Token::Var) => {
+                Some(Token::Other) | Some(Token::Space) | Some(Token::Dot) => {
                     continue;
                 }
                 Some(t) => tokens.push(t),
