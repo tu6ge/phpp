@@ -35,6 +35,7 @@ pub(crate) struct StaticData {
 }
 
 impl Psr4Data {
+    /// append from composer.json
     pub fn append_json(&mut self, json: &Composer) {
         let mut res = Vec::new();
         if let Some(AutoloadEnum::Psr(Autoload {
@@ -67,6 +68,7 @@ impl Psr4Data {
         }
     }
 
+    /// append from composer.lock
     pub fn append_lock(&mut self, lock: &ComposerLock) {
         let mut res = Vec::new();
         for item in lock.packages.iter() {
@@ -120,6 +122,8 @@ impl FilesData {
 
         self.data.insert(key, (is_vendor, value))
     }
+
+    /// append from composer.json
     pub fn append_json(&mut self, json: &Composer) {
         if let Some(AutoloadEnum::Psr(Autoload {
             files: Some(files), ..
@@ -131,6 +135,8 @@ impl FilesData {
             }
         }
     }
+
+    /// append from composer.lock
     pub fn append_lock(&mut self, lock: &ComposerLock) {
         for item in lock.packages.iter() {
             if let Some(AutoloadEnum::Psr(Autoload {
