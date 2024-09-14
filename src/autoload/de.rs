@@ -304,39 +304,39 @@ mod tests {
 
     #[test]
     fn test_parse_psr4() {
-        let content = include_str!("../../vendor/composer/autoload_psr4.php");
+        //let content = include_str!("../../vendor/composer/autoload_psr4.php");
 
-        // let content = r#"return array(
-        // 'voku\\' => array(
-        //     $vendorDir . '/voku/portable-ascii/src/voku',
-        // ),
-        // 'Webmozart\\Assert\\' => array(
-        //     $baseDir . '/webmozart/assert/src',
-        //     $vendorDir . '/webmozart/assert/src2',
-        // ),"#;
+        let content = r#"return array(
+        'voku\\' => array(
+            $vendorDir . '/voku/portable-ascii/src/voku',
+        ),
+        'Webmozart\\Assert\\' => array(
+            $baseDir . '/webmozart/assert/src',
+            $vendorDir . '/webmozart/assert/src2',
+        ),"#;
         //dbg!(content);
         let res = Psr4Data::parse(content);
         println!("{:#?}", res);
     }
 
-    #[test]
-    fn test_parse_files() {
-        let content = include_str!("../../vendor/composer/autoload_files.php");
-        let mut cursor = Cursor::new(content);
+    // #[test]
+    // fn test_parse_files() {
+    //     let content = include_str!("../../vendor/composer/autoload_files.php");
+    //     let mut cursor = Cursor::new(content);
 
-        let mut tokens = Vec::new();
-        loop {
-            let token = cursor.advance();
-            match token {
-                Some(Token::Other) | Some(Token::Space) | Some(Token::Dot) => {
-                    continue;
-                }
-                Some(t) => tokens.push(t),
-                None => break,
-            }
-        }
-        println!("{:#?}", tokens);
-    }
+    //     let mut tokens = Vec::new();
+    //     loop {
+    //         let token = cursor.advance();
+    //         match token {
+    //             Some(Token::Other) | Some(Token::Space) | Some(Token::Dot) => {
+    //                 continue;
+    //             }
+    //             Some(t) => tokens.push(t),
+    //             None => break,
+    //         }
+    //     }
+    //     println!("{:#?}", tokens);
+    // }
     #[test]
     fn test_real_files_parse() {
         let files = FilesData::new().unwrap();
