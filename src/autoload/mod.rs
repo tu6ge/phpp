@@ -40,12 +40,12 @@ impl Psr4Data {
         {
             for (key, value) in psr.iter() {
                 if let PsrValue::String(value) = value {
-                    let mut v = format!("/");
+                    let mut v = "/".to_string();
                     //v.push('/');
                     let value = if value.ends_with('/') {
                         value.trim_end_matches('/')
                     } else {
-                        &value
+                        value
                     };
                     v.push_str(value);
                     res.push((key.to_owned(), v));
@@ -79,7 +79,7 @@ impl Psr4Data {
                         let value = if value.ends_with('/') {
                             value.trim_end_matches('/')
                         } else {
-                            &value
+                            value
                         };
                         if !value.is_empty() {
                             v.push('/');
@@ -112,7 +112,7 @@ impl FilesData {
         use sha1::Sha1;
 
         let mut hasher = Sha1::new();
-        hasher.update(&value.as_bytes());
+        hasher.update(value.as_bytes());
         let sha1 = hasher.finalize();
         let key = hex::encode(sha1);
 

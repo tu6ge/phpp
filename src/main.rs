@@ -27,7 +27,7 @@ async fn main() -> Result<(), ComposerError> {
             composer.insert(name, version)?;
             composer.save()?;
 
-            composer.install(&name, &mut std_err).await?;
+            composer.install(name, &mut std_err).await?;
         }
         Commands::Install => {
             composer.install("", &mut std_err).await?;
@@ -43,7 +43,7 @@ async fn main() -> Result<(), ComposerError> {
             composer.dump_autoload()?;
         }
         Commands::Search { keyword } => {
-            search::Search::new(&keyword).search().await?;
+            search::Search::new(keyword).search().await?;
         }
         Commands::Config {
             global,

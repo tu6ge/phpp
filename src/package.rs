@@ -39,7 +39,7 @@ impl P2 {
     ) -> Pin<Box<dyn Future<Output = Result<(), ComposerError>> + Send>> {
         Box::pin(async move {
             {
-                if ctx.lock().unwrap().hash_set.get(&name).is_some() {
+                if ctx.lock().unwrap().hash_set.contains(&name) {
                     return Ok(());
                 }
             }
@@ -106,7 +106,7 @@ impl P2 {
                         let mut ctx = ctx.lock().unwrap();
                         let php_version = &ctx.php_version;
 
-                        if !Self::semver_check(&name, &version, php_version)? {
+                        if !Self::semver_check(&name, version, php_version)? {
                             ctx.php_version_error
                                 .push((format!("{}({})", name, info.version), version.to_owned()));
                         }
@@ -307,9 +307,9 @@ impl P2 {
             }
             debug_assert!(parts.len() == 2);
             let req = parts[0].trim();
-            let comp1 = Comparator::parse(&req)?;
+            let comp1 = Comparator::parse(req)?;
             let req = parts[1].trim();
-            let comp2 = Comparator::parse(&req)?;
+            let comp2 = Comparator::parse(req)?;
             let req = VersionReq {
                 comparators: vec![comp1, comp2],
             };
@@ -540,7 +540,7 @@ impl ComposerLock {
 
     fn write_psr4(&self) -> Result<(), ComposerError> {
         let mut data = Psr4Data::new()?;
-        data.append_lock(&self);
+        data.append_lock(self);
 
         data.write()
     }
@@ -626,16 +626,16 @@ impl ComposerLock {
 
     fn write_autoload_files(&self) -> Result<(), ComposerError> {
         let mut files = FilesData::new()?;
-        files.append_lock(&self);
+        files.append_lock(self);
         files.write()
     }
 
     fn write_autoload_static(&self) -> Result<(), ComposerError> {
         let mut files = FilesData::new()?;
-        files.append_lock(&self);
+        files.append_lock(self);
 
         let mut psr4 = Psr4Data::new()?;
-        psr4.append_lock(&self);
+        psr4.append_lock(self);
 
         let static_data = StaticData::from(&files, &psr4);
 

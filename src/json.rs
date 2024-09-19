@@ -98,10 +98,10 @@ impl Composer {
     fn eprint_php_version(
         name: &str,
         origin_version: &str,
-        list: &Vec<(String, String)>,
+        list: &[(String, String)],
         stderr: &mut dyn ErrWriter,
     ) -> Result<(), ComposerError> {
-        if list.len() > 0 {
+        if !list.is_empty() {
             for (i, item) in list.iter().enumerate() {
                 stderr.write(&format!(
                     "{name}({}) -> .. -> {} need PHP version is {}",
@@ -126,10 +126,10 @@ impl Composer {
     fn eprint_extensions(
         name: &str,
         origin_version: &str,
-        list: &Vec<(String, String)>,
+        list: &[(String, String)],
         stderr: &mut dyn ErrWriter,
     ) -> Result<(), ComposerError> {
-        if list.len() > 0 {
+        if !list.is_empty() {
             for (i, item) in list.iter().enumerate() {
                 stderr.write(&format!(
                     "{name}({}) -> .. -> {} need ext-{},it is missing from your system. Install or enable PHP's {} extension.",
@@ -343,11 +343,11 @@ impl Composer {
 
     pub fn dump_autoload(&self) -> Result<(), ComposerError> {
         let mut psr4 = Psr4Data::new()?;
-        psr4.append_json(&self);
+        psr4.append_json(self);
         psr4.write()?;
 
         let mut files = FilesData::new()?;
-        files.append_json(&self);
+        files.append_json(self);
         files.write()?;
 
         let static_files = StaticData::from(&files, &psr4);

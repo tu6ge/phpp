@@ -8,6 +8,7 @@ use crate::error::ComposerError;
 use super::{FilesData, IsVendor, Psr4Data, StaticData};
 
 impl Psr4Data {
+    #[allow(clippy::type_complexity)]
     fn get_psr4(&self) -> Result<Vec<(String, (IsVendor, String))>, ComposerError> {
         let mut res = Vec::new();
 
