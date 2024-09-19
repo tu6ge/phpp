@@ -163,22 +163,4 @@ impl StaticData {
             psr4_dir,
         }
     }
-
-    pub fn write(&self) -> Result<(), ComposerError> {
-        let content = include_str!("../../asset/autoload_static.php");
-
-        let content = content.replace("__FILES_CONTENT__", &self.files);
-        let content = content.replace("__PSR4_LENGTH__", &self.psr4_length);
-        let content = content.replace("__PSR4_DIRS__", &self.psr4_dir);
-
-        let path = Path::new("./vendor/composer/");
-        if !path.exists() {
-            create_dir_all(path)?;
-        }
-        let path = path.join("autoload_static.php");
-        let mut f = File::create(path)?;
-        f.write_all(content.as_bytes())?;
-
-        Ok(())
-    }
 }

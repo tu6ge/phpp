@@ -5,7 +5,7 @@ use std::path::Path;
 
 use crate::error::ComposerError;
 
-use super::{FilesData, IsVendor, Psr4Data};
+use super::{FilesData, IsVendor, Psr4Data, StaticData};
 
 impl Psr4Data {
     fn get_psr4(&self) -> Result<Vec<(String, (IsVendor, String))>, ComposerError> {
@@ -191,5 +191,25 @@ return array(
         }
 
         files_content
+    }
+}
+
+impl StaticData {
+    pub fn write(&self) -> Result<(), ComposerError> {
+        let content = include_str!("../../asset/autoload_static.php");
+
+        let content = content.replace("__FILES_CONTENT__", &self.files);
+        let content = content.replace("__PSR4_LENGTH__", &self.psr4_length);
+        let content = content.replace("__PSR4_DIRS__", &self.psr4_dir);
+
+        let path = Path::new("./vendor/composer/");
+        if !path.exists() {
+            create_dir_all(path)?;
+        }
+        let path = path.join("autoload_static.php");
+        let mut f = File::create(path)?;
+        f.write_all(content.as_bytes())?;
+
+        Ok(())
     }
 }
