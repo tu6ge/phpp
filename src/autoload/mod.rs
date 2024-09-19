@@ -1,13 +1,6 @@
-use std::{
-    fs::{create_dir_all, File},
-    io::Write,
-    path::Path,
-};
-
 use indexmap::IndexMap;
 
 use crate::{
-    error::ComposerError,
     json::Composer,
     package::{Autoload, AutoloadEnum, ComposerLock, PsrValue},
 };
@@ -17,16 +10,19 @@ mod ser;
 
 type IsVendor = bool;
 
+/// parse autoload_psr4.php data
 #[derive(Debug, Default)]
 pub(crate) struct Psr4Data {
     data: IndexMap<String, Vec<(IsVendor, String)>>,
 }
 
+/// parse autoload_files.php data
 #[derive(Debug, Default)]
 pub(crate) struct FilesData {
     data: IndexMap<String, (IsVendor, String)>,
 }
 
+/// autoload_static.php data
 #[derive(Debug, Default)]
 pub(crate) struct StaticData {
     files: String,
