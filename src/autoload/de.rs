@@ -1,4 +1,4 @@
-use std::{fs::create_dir_all, path::Path, str::CharIndices};
+use std::{path::Path, str::CharIndices};
 
 use crate::error::ComposerError;
 
@@ -8,7 +8,7 @@ impl Psr4Data {
     pub fn new() -> Result<Self, ComposerError> {
         let path = Path::new("./vendor/composer/");
         if !path.exists() {
-            create_dir_all(path)?;
+            return Ok(Self::default());
         }
         let path = path.join("autoload_psr4.php");
         let content = match std::fs::read_to_string(path) {
@@ -79,7 +79,7 @@ impl FilesData {
     pub fn new() -> Result<Self, ComposerError> {
         let path = Path::new("./vendor/composer/");
         if !path.exists() {
-            create_dir_all(path)?;
+            return Ok(Self::default());
         }
         let path = path.join("autoload_files.php");
         let content = match std::fs::read_to_string(path) {
